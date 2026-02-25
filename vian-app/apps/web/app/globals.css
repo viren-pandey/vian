@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-base:       #0d0d0d;
+  --bg-surface:    #141414;
+  --bg-elevated:   #1a1a1a;
+  --border-subtle: #1f1f1f;
+  --border-mid:    #2a2a2a;
+  --text-primary:  #f0f0f0;
+  --text-muted:    #888888;
+  --text-faint:    #555555;
+  --accent:        #3b82f6;
+  --accent-hover:  #2563eb;
+  --green:         #22c55e;
+  --red:           #ef4444;
+  --yellow:        #f59e0b;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Geist', -apple-system, sans-serif;
+  font-size: 14px;
+  min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar        { width: 4px; height: 4px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: var(--border-default); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+/* Generating shimmer bar */
+.generating-bar {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--accent) 50%, transparent 100%);
+  background-size: 400px 1px;
+  animation: gen-shimmer 1.5s linear infinite;
+}
+
+@keyframes gen-shimmer {
+  0%   { background-position: -200px 0; }
+  100% { background-position:  200px 0; }
+}

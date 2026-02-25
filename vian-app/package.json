@@ -1,0 +1,26 @@
+{
+  "name": "@vian/monorepo",
+  "version": "1.0.0",
+  "description": "Made with VIAN by Viren",
+  "author": "Viren Pandeyy",
+  "private": true,
+  "packageManager": "pnpm@8.15.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r --filter './packages/**' run build && pnpm -r --filter './apps/**' run build",
+    "start": "pnpm -C apps/api start & pnpm -C apps/web start",
+    "lint": "pnpm -r run lint",
+    "type-check": "pnpm -r run type-check"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "prettier": "^3.1.0",
+    "eslint": "^8.55.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "react": "^18.2.0",
+      "react-dom": "^18.2.0"
+    }
+  }
+}

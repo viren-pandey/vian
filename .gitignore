@@ -1,0 +1,47 @@
+# ─── Dependencies ─────────────────────────────────────────────
+
+node_modules/
+.pnpm-store/
+
+# ─── Build outputs ────────────────────────────────────────────
+
+dist/
+build/
+.next/
+out/
+
+# ─── Env files (CRITICAL) ─────────────────────────────────────
+
+.env
+.env.*
+!.env.example
+
+# ─── Logs ─────────────────────────────────────────────────────
+
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# ─── OS junk ──────────────────────────────────────────────────
+
+.DS_Store
+Thumbs.db
+
+# ─── IDE ──────────────────────────────────────────────────────
+
+.vscode/
+.idea/
+
+# ─── Prisma ───────────────────────────────────────────────────
+
+prisma/dev.db
+prisma/dev.db-journal
+
+# ─── Misc ─────────────────────────────────────────────────────
+
+coverage/
+tmp/
+.cache/
+.env
+.env.local

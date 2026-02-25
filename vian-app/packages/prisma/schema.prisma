@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ULTIMATE_ADMIN
+  APPROVED
+  PENDING
+  REJECTED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  role         UserRole  @default(PENDING)
+  passwordHash String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  projects     Project[]
+}
+
+model Project {
+  id         String   @id @default(cuid())
+  name       String
+  prompt     String   @db.Text
+  model      String   @default("gpt-4o")
+  files      Json     @default("{}")
+  shareToken String?  @unique @default(cuid())
+  isPublic   Boolean  @default(false)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model BetaRequest {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  reason    String   @db.Text
+  status    UserRole @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

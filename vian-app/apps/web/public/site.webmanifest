@@ -1,0 +1,17 @@
+{
+  "name": "VIAN Studio",
+  "short_name": "VIAN",
+  "description": "AI-powered app builder • Made with VIAN by Viren",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0d0d",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

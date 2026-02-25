@@ -1,0 +1,16 @@
+{
+  "name": "@vian/shared-types",
+  "version": "1.0.0",
+  "description": "Made with VIAN by Viren",
+  "author": "Viren Pandeyy",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
