@@ -9,7 +9,7 @@ interface Post {
   tags:        { name: string; slug: string }[]
 }
 
-export default function BlogCard({ post }: { post: Post }) {
+export default function BlogCard({ post, apiBase = '' }: { post: Post; apiBase?: string }) {
   return (
     <a
       href={`/blog/${post.slug}`}
@@ -17,8 +17,9 @@ export default function BlogCard({ post }: { post: Post }) {
                  rounded-xl overflow-hidden transition-colors"
     >
       {post.coverImage && (
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={post.coverImage}
+          src={`${apiBase}/uploads/blog/${post.coverImage}`}
           alt={post.title}
           className="w-full h-40 object-cover"
         />
