@@ -8,6 +8,13 @@ export type WCStatus = 'idle' | 'booting' | 'installing' | 'running' | 'error'
 // Singleton — WebContainer.boot() can only be called once per page load
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let globalWC: any = null
+let serverReadyRegistered = false
+
+// Module-level callback refs — always point at the CURRENT hook instance's
+// setters, so the server-ready listener never calls a stale closure.
+let _setStatus:     ((s: WCStatus) => void) | null = null
+let _pushLog:       ((l: string)   => void) | null = null
+let _setPreviewUrl: ((u: string)   => void) | null = null
 
 export function useWebContainer() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -20,6 +27,15 @@ export function useWebContainer() {
   const pushLog = useCallback((line: string) => {
     setLogs((prev) => [...prev.slice(-300), line])
   }, [])
+
+  // Always keep module-level refs pointing at the CURRENT render's setters.
+  // This makes the server-ready listener (registered once) always call the
+  // live component rather than a stale closure.
+  useEffect(() => {
+    _setStatus     = setStatus
+    _pushLog       = pushLog
+    _setPreviewUrl = setPreviewUrl
+  })
 
   // Wire up the global instance if it already exists (hot-reload guard)
   useEffect(() => {
@@ -36,8 +52,8 @@ export function useWebContainer() {
   const ensureBooted = useCallback(async () => {
     if (bootedRef.current && wcRef.current) return wcRef.current
 
-    setStatus('booting')
-    pushLog('> Booting WebContainer...')
+    _setStatus?.('booting')
+    _pushLog?.('> Booting WebContainer...')
 
     const { WebContainer } = await import('@webcontainer/api')
     const container = globalWC ?? await WebContainer.boot()
@@ -45,17 +61,21 @@ export function useWebContainer() {
     wcRef.current     = container
     bootedRef.current = true
 
-    // server-ready fires when `next dev` is up
-    container.on('server-ready', (_port: number, url: string) => {
-      pushLog(`> Ready -> ${url}`)
-      setPreviewUrl(url)
-      setStatus('running')
-    })
+    // Register server-ready ONCE. Uses module-level refs so it always calls
+    // the live component's setters — never a stale closure.
+    if (!serverReadyRegistered) {
+      serverReadyRegistered = true
+      container.on('server-ready', (_port: number, url: string) => {
+        _pushLog?.(`> Ready -> ${url}`)
+        _setPreviewUrl?.(url)
+        _setStatus?.('running')
+      })
+    }
 
-    pushLog('> Sandbox ready.')
-    setStatus('idle')
+    _pushLog?.('> Sandbox ready.')
+    _setStatus?.('idle')
     return container
-  }, [pushLog, setPreviewUrl])
+  }, [])
 
   // Write a single file, creating parent directories automatically
   const writeFile = useCallback(async (filePath: string, content: string) => {
@@ -73,14 +93,14 @@ export function useWebContainer() {
     const wc = await ensureBooted()
 
     // npm install
-    setStatus('installing')
-    pushLog('> npm install...')
+    _setStatus?.('installing')
+    _pushLog?.('> npm install...')
 
     const installProc = await wc.spawn('npm', ['install'])
     installProc.output.pipeTo(
       new WritableStream({
         write(chunk: string) {
-          chunk.split('\n').filter(Boolean).forEach((l: string) => pushLog(l))
+          chunk.split('\n').filter(Boolean).forEach((l: string) => _pushLog?.(l))
         },
       }),
     )
@@ -88,24 +108,24 @@ export function useWebContainer() {
     const installCode = await installProc.exit
     if (installCode !== 0) {
       const msg = `npm install failed (exit ${installCode})`
-      pushLog(`! ${msg}`)
-      setStatus('error')
+      _pushLog?.(`! ${msg}`)
+      _setStatus?.('error')
       return
     }
-    pushLog('> Dependencies installed.')
+    _pushLog?.('> Dependencies installed.')
 
     // npm run dev
-    pushLog('> Starting next dev...')
+    _pushLog?.('> Starting next dev...')
     const devProc = await wc.spawn('npm', ['run', 'dev'])
     devProc.output.pipeTo(
       new WritableStream({
         write(chunk: string) {
-          chunk.split('\n').filter(Boolean).forEach((l: string) => pushLog(l))
+          chunk.split('\n').filter(Boolean).forEach((l: string) => _pushLog?.(l))
         },
       }),
     )
     // server-ready event fires -> sets previewUrl + status = 'running'
-  }, [ensureBooted, pushLog])
+  }, [ensureBooted])
 
   return {
     writeFile,
