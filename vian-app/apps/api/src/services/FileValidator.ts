@@ -3,10 +3,30 @@
  * All validation is enforced before files are streamed to the client.
  */
 export class FileValidator {
+  // Monorepo-prefixed paths (legacy, kept for safety)
   private readonly ALLOWED_PREFIXES = [
     'apps/web/',
     'apps/api/',
     'packages/',
+  ]
+
+  // WebContainer-relative paths (what the AI actually generates)
+  private readonly ALLOWED_APP_PREFIXES = [
+    'app/',
+    'pages/',
+    'components/',
+    'lib/',
+    'hooks/',
+    'styles/',
+    'public/',
+    'utils/',
+    'types/',
+    'context/',
+    'store/',
+    'server/',
+    'api/',
+    'actions/',
+    'middleware/',
   ]
 
   private readonly ALLOWED_ROOT_FILES = [
@@ -14,6 +34,11 @@ export class FileValidator {
     'pnpm-workspace.yaml',
     'tsconfig.json',
     'tsconfig.base.json',
+    'tailwind.config.ts',
+    'tailwind.config.js',
+    'postcss.config.js',
+    'next.config.js',
+    'next.config.ts',
     '.env.example',
     '.gitignore',
     'README.md',
@@ -26,7 +51,11 @@ export class FileValidator {
   isValidPath(filePath: string): boolean {
     if (!filePath || filePath.includes('..') || filePath.startsWith('/')) return false
     if (this.ALLOWED_ROOT_FILES.includes(filePath)) return true
-    return this.ALLOWED_PREFIXES.some((prefix) => filePath.startsWith(prefix))
+    // Monorepo paths
+    if (this.ALLOWED_PREFIXES.some((prefix) => filePath.startsWith(prefix))) return true
+    // WebContainer app-relative paths (what AI generates: app/page.tsx, components/Navbar.tsx etc.)
+    if (this.ALLOWED_APP_PREFIXES.some((prefix) => filePath.startsWith(prefix))) return true
+    return false
   }
 
   /**
