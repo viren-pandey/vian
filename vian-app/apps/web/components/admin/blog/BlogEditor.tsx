@@ -1,6 +1,6 @@
 'use client'
 
-import { useEditor, EditorContent } from '@tiptap/react'
+import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Link from '@tiptap/extension-link'
@@ -35,7 +35,7 @@ export default function BlogEditor({ content, onChange }: BlogEditorProps) {
       CodeBlockLowlight.configure({ lowlight }),
     ],
     content,
-    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    onUpdate: ({ editor }: { editor: Editor }) => onChange(editor.getHTML()),
     editorProps: {
       attributes: { class: 'tiptap focus:outline-none' },
     },
