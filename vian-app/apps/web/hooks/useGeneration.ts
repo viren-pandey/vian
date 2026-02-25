@@ -1,6 +1,7 @@
-import { useCallback, useRef } from 'react'
+﻿import { useCallback, useRef } from 'react'
 import { useProjectStore } from '@/stores/projectStore'
 import { API_BASE } from '@/lib/constants'
+import { BOILERPLATE_FILES } from '@/lib/boilerplate'
 
 export function useGeneration() {
   const {
@@ -15,59 +16,57 @@ export function useGeneration() {
     reset,
   } = useProjectStore()
 
-  const bootWebContainer = useRef<((files: Record<string, string>) => Promise<void>) | null>(null)
+  // Refs to WebContainer functions registered by the studio page
+  const writeFileRef = useRef<((path: string, content: string) => Promise<void>) | null>(null)
+  const installRef   = useRef<(() => Promise<void>) | null>(null)
+  const startDevRef  = useRef<(() => Promise<void>) | null>(null)
 
-  const registerBoot = useCallback((fn: (files: Record<string, string>) => Promise<void>) => {
-    bootWebContainer.current = fn
-  }, [])
+  const registerContainer = useCallback(
+    (
+      writeFile: (path: string, content: string) => Promise<void>,
+      install:   () => Promise<void>,
+      startDev:  () => Promise<void>,
+    ) => {
+      writeFileRef.current = writeFile
+      installRef.current   = install
+      startDevRef.current  = startDev
+    },
+    [],
+  )
 
-  // SSE-based generation: streams file-by-file from the API
+  // ── Generate: plant boilerplate -> install -> stream AI files -> startDev ──
   const generate = useCallback(
     async (prompt: string) => {
       reset()
       setIsGenerating(true)
       setErrorMessage(null)
 
-      const firstFileSet = { current: false }
-      const allFiles: Record<string, string> = {}
-
-      // ── Shared SSE-line processor ─────────────────────────────────────────
-      const processLine = (line: string) => {
-        if (!line.startsWith('data: ')) return
-        const raw = line.slice(6).trim()
-        if (!raw) return
-        let event: Record<string, unknown>
-        try { event = JSON.parse(raw) } catch { return }
-
-        if (event.type === 'meta') {
-          if (event.projectId) setProjectId(event.projectId as string)
-        } else if (event.type === 'file') {
-          const { path, content, language } = event as { path: string; content: string; language?: string }
-          setFile(path, { path, content, language: language ?? 'typescript', status: 'complete' })
-          allFiles[path] = content
-          if (!firstFileSet.current) { firstFileSet.current = true; setActiveFile(path) }
-        } else if (event.type === 'complete') {
-          // Focus the main app file in the editor
-          const mainFile = allFiles['src/App.tsx'] ? 'src/App.tsx'
-            : allFiles['src/app.tsx'] ? 'src/app.tsx'
-            : allFiles['src/main.tsx'] ? 'src/main.tsx'
-            : null
-          if (mainFile) setActiveFile(mainFile)
-          // Boot WebContainer only once, after ALL files are received
-          if (bootWebContainer.current && Object.keys(allFiles).length > 0) {
-            bootWebContainer.current({ ...allFiles }).catch(console.error)
-          }
-        } else if (event.type === 'error') {
-          throw new Error((event.message as string) ?? 'Generation failed')
-        }
-      }
+      const localFiles: Record<string, string> = {}
+      let devStarted = false
 
       try {
-        // ── API path — goes through Express → LLM provider ──────────────────
+        // Step 1 -- plant all boilerplate files into WebContainer + store
+        for (const file of BOILERPLATE_FILES) {
+          await writeFileRef.current?.(file.path, file.content)
+          setFile(file.path, {
+            path:     file.path,
+            content:  file.content,
+            language: file.path.endsWith('.ts') || file.path.endsWith('.tsx') ? 'typescript' : 'plaintext',
+            status:   'complete',
+          })
+          localFiles[file.path] = file.content
+        }
+        // Show the placeholder page in the editor while AI works
+        setActiveFile('app/page.tsx')
+
+        // Step 2 -- fire npm install in background (do NOT await)
+        const installDone = installRef.current?.() ?? Promise.resolve()
+
+        // Step 3 -- call AI generation SSE endpoint
         const res = await fetch(`${API_BASE}/generate`, {
-          method: 'POST',
+          method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, model }),
+          body:    JSON.stringify({ prompt, model }),
         })
 
         if (!res.ok || !res.body) {
@@ -75,58 +74,119 @@ export function useGeneration() {
           throw new Error(text || `HTTP ${res.status}`)
         }
 
-        const reader = res.body.getReader()
+        const reader  = res.body.getReader()
         const decoder = new TextDecoder()
         let buffer = ''
+
+        const processLine = async (line: string) => {
+          if (!line.startsWith('data: ')) return
+          const raw = line.slice(6).trim()
+          if (!raw) return
+
+          let event: Record<string, unknown>
+          try { event = JSON.parse(raw) } catch { return }
+
+          if (event.type === 'meta') {
+            if (event.projectId) setProjectId(event.projectId as string)
+
+          } else if (event.type === 'file') {
+            const { path, content, language } = event as {
+              path: string; content: string; language?: string
+            }
+            // Update editor store
+            setFile(path, {
+              path,
+              content,
+              language: language ?? 'typescript',
+              status:   'complete',
+            })
+            setActiveFile(path)
+            localFiles[path] = content
+
+            // Write to WebContainer filesystem
+            await writeFileRef.current?.(path, content)
+
+            // Step 4 -- when AI delivers app/page.tsx, wait for install then startDev
+            if (
+              (path === 'app/page.tsx' || path === 'pages/index.tsx') &&
+              !devStarted
+            ) {
+              devStarted = true
+              installDone
+                .then(() => startDevRef.current?.())
+                .catch(console.error)
+            }
+
+          } else if (event.type === 'complete') {
+            // Ensure dev started even if AI never emitted app/page.tsx
+            if (!devStarted) {
+              devStarted = true
+              installDone
+                .then(() => startDevRef.current?.())
+                .catch(console.error)
+            }
+            // Focus main page in editor
+            const mainFile =
+              localFiles['app/page.tsx']   ? 'app/page.tsx'
+            : localFiles['pages/index.tsx'] ? 'pages/index.tsx'
+            : null
+            if (mainFile) setActiveFile(mainFile)
+
+          } else if (event.type === 'error') {
+            throw new Error((event.message as string) ?? 'Generation failed')
+          }
+        }
 
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
           buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() ?? ''
-          for (const line of lines) processLine(line)
+          const parts = buffer.split('\n')
+          buffer = parts.pop() ?? ''
+          for (const line of parts) {
+            await processLine(line)
+          }
         }
+
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Generation failed'
-        console.error('[useGeneration] error:', err)
+        console.error('[useGeneration] generate error:', err)
         setErrorMessage(msg)
       } finally {
         setIsGenerating(false)
       }
     },
-    [model, reset, setFile, setActiveFile, setIsGenerating, setProjectId, setErrorMessage]
+    [model, reset, setFile, setActiveFile, setIsGenerating, setProjectId, setErrorMessage],
   )
 
-  // Edit via SSE — streams changed + new files from the API
+  // ── Edit: stream changed files -> write to container (Next.js HMR handles reloads) ──
   const editFile = useCallback(
-    async (instruction: string, onSuccess?: (editedPath: string) => void) => {
+    async (instruction: string, onSuccess?: (path: string) => void) => {
       setIsGenerating(true)
       setErrorMessage(null)
 
-      // Prefer the main app component over config/package files that are first in the editor
-      const PREFERRED = ['src/App.tsx', 'src/app.tsx', 'src/App.jsx', 'src/main.tsx']
-      const isComponentFile = (p: string) =>
-        /\.(tsx|jsx)$/.test(p) &&
-        !['package.json', 'vite.config.ts', 'tsconfig.json', 'tailwind.config.js', 'postcss.config.js'].includes(p)
+      // Prefer the main page over config files
+      const PREFERRED = ['app/page.tsx', 'pages/index.tsx', 'app/page.jsx']
+      const isComponent = (p: string) =>
+        /\.(tsx|jsx|ts)$/.test(p) &&
+        !['package.json', 'next.config.js', 'tsconfig.json', 'tailwind.config.ts', 'postcss.config.js'].includes(p)
 
       const smartFile =
         PREFERRED.find((f) => files[f]) ??
-        Object.keys(files).find(isComponentFile) ??
-        (activeFile && isComponentFile(activeFile) ? activeFile : null) ??
+        Object.keys(files).find(isComponent) ??
+        (activeFile && isComponent(activeFile) ? activeFile : null) ??
         activeFile ??
         ''
 
-      const currentFileToEdit = smartFile
       const currentContent = smartFile ? (files[smartFile]?.content ?? '') : ''
-      let firstEditedPath = currentFileToEdit
+      let firstEditedPath  = smartFile
 
       try {
         const res = await fetch(`${API_BASE}/edit`, {
-          method: 'POST',
+          method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fileToEdit: currentFileToEdit,
+          body:    JSON.stringify({
+            fileToEdit:     smartFile,
             instruction,
             model,
             currentContent,
@@ -138,28 +198,32 @@ export function useGeneration() {
           throw new Error(text || `HTTP ${res.status}`)
         }
 
-        const reader = res.body.getReader()
+        const reader  = res.body.getReader()
         const decoder = new TextDecoder()
-        let buffer = ''
-        let firstFileSeen = false
-        const updatedFiles: Record<string, string> = {}
+        let buffer    = ''
+        let firstSeen = false
 
-        const processLine = (line: string) => {
+        const processLine = async (line: string) => {
           if (!line.startsWith('data: ')) return
           const raw = line.slice(6).trim()
           if (!raw) return
+
           let event: Record<string, unknown>
           try { event = JSON.parse(raw) } catch { return }
 
           if (event.type === 'file') {
-            const { path, content, language } = event as { path: string; content: string; language?: string }
+            const { path, content, language } = event as {
+              path: string; content: string; language?: string
+            }
             setFile(path, { path, content, language: language ?? 'typescript', status: 'complete' })
-            updatedFiles[path] = content
-            if (!firstFileSeen) {
-              firstFileSeen = true
+            if (!firstSeen) {
+              firstSeen = true
               firstEditedPath = path
               setActiveFile(path)
             }
+            // Write file -- Next.js HMR will hot-reload automatically
+            await writeFileRef.current?.(path, content)
+
           } else if (event.type === 'error') {
             throw new Error((event.message as string) ?? 'Edit failed')
           }
@@ -169,25 +233,15 @@ export function useGeneration() {
           const { done, value } = await reader.read()
           if (done) break
           buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() ?? ''
-          for (const line of lines) processLine(line)
-        }
-
-        // Reboot preview with merged updated files so the live preview reflects the edit
-        if (bootWebContainer.current && Object.keys(updatedFiles).length > 0) {
-          // Merge: start from current store files, overlay what the LLM changed
-          const allCurrent: Record<string, string> = {}
-          for (const [p, f] of Object.entries(files as Record<string, { content: string }>)) {
-            if (f && typeof f === 'object' && typeof f.content === 'string') {
-              allCurrent[p] = f.content
-            }
+          const parts = buffer.split('\n')
+          buffer = parts.pop() ?? ''
+          for (const line of parts) {
+            await processLine(line)
           }
-          Object.assign(allCurrent, updatedFiles)
-          bootWebContainer.current(allCurrent).catch(console.error)
         }
 
         onSuccess?.(firstEditedPath)
+
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Edit failed'
         console.error('[useGeneration] editFile error:', err)
@@ -196,9 +250,8 @@ export function useGeneration() {
         setIsGenerating(false)
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeFile, files, model, setFile, setActiveFile, setIsGenerating, setErrorMessage]
+    [activeFile, files, model, setFile, setActiveFile, setIsGenerating, setErrorMessage],
   )
 
-  return { generate, editFile, registerBoot }
+  return { generate, editFile, registerContainer }
 }

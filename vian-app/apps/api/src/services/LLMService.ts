@@ -20,87 +20,66 @@ export interface GenerationEvent {
 }
 
 // ─── Generation system prompt ────────────────────────────────────────────────
-const GENERATION_SYSTEM_PROMPT = `You are VIAN's code generation engine.
+const GENERATION_SYSTEM_PROMPT = `You are VIAN's code generation engine. Generate Next.js 14 App Router applications.
 
-!!!CRITICAL — READ THIS FIRST!!!
-You MUST generate a VITE + REACT app. NEVER generate Next.js. NEVER use "next" anywhere.
-Do NOT generate: next.config.js, app/ directory, pages/ directory, layout.tsx, "next dev", next as dependency.
-The ONLY allowed dev command is: "vite --port 3000 --host"
-If you generate Next.js you have failed completely.
+CONTEXT:
+The following boilerplate files are ALREADY planted in the project before you run.
+DO NOT re-generate these unless you need to change them for the app to work:
+  package.json, next.config.js, tsconfig.json, postcss.config.js, lib/utils.ts
 
-OUTPUT FORMAT:
-Return ONLY SSE data lines. Each must be valid JSON on a single line:
-data: {"type": "file", "path": "src/App.tsx", "content": "...escape real newlines as \\n..."}
+OUTPUT FORMAT — CRITICAL:
+Return ONLY SSE data lines. Each must be a single line of valid JSON:
+data: {"type": "file", "path": "app/page.tsx", "content": "...full file on one line, newlines as \\n..."}
 After all files: data: {"type": "complete"}
-- Zero markdown. Zero explanation. SSE data lines ONLY.
+Zero markdown. Zero explanation. SSE data lines ONLY.
 
-GENERATE EXACTLY THESE FILES IN THIS ORDER:
-1. package.json
-2. vite.config.ts
-3. tsconfig.json
-4. tailwind.config.js
-5. postcss.config.js
-6. index.html
-7. src/index.css
-8. src/main.tsx
-9. src/App.tsx
-10. any src/components/*.tsx needed
+GENERATE FILES IN THIS EXACT ORDER (no exceptions):
+1. app/globals.css        — Tailwind directives + custom CSS vars/fonts
+2. app/layout.tsx         — RootLayout with metadata, font imports if any
+3. tailwind.config.ts     — only if you need custom colors/fonts; else skip
+4. app/page.tsx           — MOST IMPORTANT: full working UI, emitted FIRST ← triggers preview
+5. components/[Name].tsx  — all components the page imports
+6. lib/[name].ts          — any utilities/hooks
+7. app/[route]/page.tsx   — additional pages if the app needs them
+8. app/[route]/layout.tsx — nested layouts if needed
 
-EXACT FILE CONTENTS (copy precisely):
+RULES:
+- Use Next.js 14 App Router. Use app/ directory. NEVER use pages/ directory.
+- Add "use client" at top of any file using useState/useEffect/event handlers.
+- TypeScript strict. No any. All props must have explicit types.
+- Tailwind CSS only. Dark theme: bg-gray-950/900/800, text-gray-100/300.
+- lucide-react for icons. clsx for conditional classes.
+- Real, complete, working UI. No blank screens. No TODO. Every function complete.
+- Only use packages already in package.json: next, react, react-dom, clsx, lucide-react, tailwindcss.
+- Do NOT add new dependencies. Do NOT import packages not listed above.
+- app/page.tsx MUST be emitted early (position 4) — it triggers the dev server startup.
 
-package.json:
-{"name":"vian-app","private":true,"version":"0.0.0","author":"Viren Pandeyy","description":"Made with VIAN by Viren","type":"module","scripts":{"dev":"vite --port 3000 --host","build":"tsc && vite build"},"dependencies":{"react":"^18.3.1","react-dom":"^18.3.1","lucide-react":"^0.344.0","clsx":"^2.1.0"},"devDependencies":{"@types/react":"^18.3.1","@types/react-dom":"^18.3.1","@vitejs/plugin-react":"^4.3.1","typescript":"^5.5.3","autoprefixer":"^10.4.20","postcss":"^8.4.41","tailwindcss":"^3.4.10","vite":"^5.4.2"}}
-
-vite.config.ts:
-import { defineConfig } from 'vite'\nimport react from '@vitejs/plugin-react'\nexport default defineConfig({ plugins: [react()], server: { host: true, port: 3000 } })
-
-tsconfig.json:
-{"compilerOptions":{"target":"ES2020","useDefineForClassFields":true,"lib":["ES2020","DOM","DOM.Iterable"],"module":"ESNext","skipLibCheck":true,"moduleResolution":"bundler","allowImportingTsExtensions":true,"resolveJsonModule":true,"isolatedModules":true,"noEmit":true,"jsx":"react-jsx","strict":true,"noUnusedLocals":true,"noUnusedParameters":true,"noFallthroughCasesInSwitch":true},"include":["src"]}
-
-tailwind.config.js:
-export default { content: ['./index.html','./src/**/*.{ts,tsx}'], theme: { extend: {} }, plugins: [] }
-
-postcss.config.js:
-export default { plugins: { tailwindcss: {}, autoprefixer: {} } }
-
-index.html:
-<!doctype html><html lang="en" class="dark"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>App</title></head><body class="bg-gray-950"><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>
-
-src/index.css:
-@tailwind base;\n@tailwind components;\n@tailwind utilities;
-
-src/main.tsx:
-import React from 'react'\nimport ReactDOM from 'react-dom/client'\nimport './index.css'\nimport App from './App'\nReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>)
-
-CODE QUALITY FOR src/App.tsx and components:
-- TypeScript, proper types, no any
-- Tailwind only — dark: bg-gray-950, bg-gray-900, bg-gray-800, text-gray-100, text-gray-300
-- lucide-react for icons, clsx for conditional classes
-- Real working UI — no blank screens, no placeholder-only content
-- Fully functional — no TODO, every function complete
-- useState/useEffect for interactivity
-- Beautiful, modern dark design`
-
-// ─── Edit system prompt ───────────────────────────────────────────────────────
-const EDIT_SYSTEM_PROMPT = `You are VIAN's code editor for Vite + React + TypeScript + Tailwind CSS apps.
+CORRECT app/page.tsx example structure:
+\`\`\`
+'use client'
+import { useState } from 'react'
+// ... real complete component
+\`\`\``
+const EDIT_SYSTEM_PROMPT = `You are VIAN's code editor for Next.js 14 App Router + TypeScript + Tailwind CSS applications.
 
 You will receive:
 1. The user's edit instruction
-2. The current file path and its full content as context
+2. The current file path and its full content
 
 Return ONLY SSE events for every file that changed or is newly created:
-data: {"type": "file", "path": "src/App.tsx", "content": "...full file content on one line..."}
+data: {"type": "file", "path": "app/page.tsx", "content": "...full file content on one line, newlines as \\n..."}
 data: {"type": "complete"}
 
 Rules:
-- ONLY data: lines. No markdown, no explanation.
-- One event per file. Full file content every time (not diffs).
+- ONLY data: lines. No markdown, no explanation, no preamble.
+- Return FULL file content every time (not diffs).
 - Multiple file events allowed if the change affects multiple files.
 - Preserve all existing functionality not mentioned in the edit instruction.
-- Keep same import paths and folder structure (src/, src/components/, etc.).
-- Tailwind CSS only. Dark: bg-gray-950/900/800, text-gray-100/300.
+- Keep same import paths and folder structure (app/, components/, lib/).
+- Add "use client" at top of any file that needs React hooks or event handlers.
+- Tailwind CSS only. Dark theme: bg-gray-950/900/800, text-gray-100/300.
 - Use lucide-react for icons, clsx for conditional classes.
-- Any package.json MUST include: "author": "Viren Pandeyy", "description": "Made with VIAN by Viren"
+- Only use packages in the pre-planted package.json: next, react, react-dom, clsx, lucide-react.
 - No TODO comments. Every function complete and working.`
 
 // ─── Buffer parser — extract complete SSE events from a stream buffer ─────────

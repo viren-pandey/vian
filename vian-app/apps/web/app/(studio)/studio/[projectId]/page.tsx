@@ -18,12 +18,14 @@ export default function StudioPage() {
   const searchParams = useSearchParams()
   const urlPrompt = searchParams.get('prompt')
   const { activeFile, files, isGenerating, previewUrl } = useProjectStore()
-  const { generate, editFile, registerBoot } = useGeneration()
-  const { boot, status: containerStatus, logs } = useWebContainer()
+  const { generate, editFile, registerContainer } = useGeneration()
+  const { writeFile, install, startDev, status: containerStatus, logs } = useWebContainer()
   const hasAutoStarted = useRef(false)
   const [leftTab, setLeftTab] = useState<'chat' | 'files'>('chat')
 
-  useEffect(() => { registerBoot(boot) }, [registerBoot, boot])
+  useEffect(() => {
+    registerContainer(writeFile, install, startDev)
+  }, [registerContainer, writeFile, install, startDev])
 
   useEffect(() => {
     if (urlPrompt && !hasAutoStarted.current) {

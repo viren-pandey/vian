@@ -1,10 +1,10 @@
-import { Router } from 'express'
+import { Router, type IRouter } from 'express'
 import { PrismaClient } from '@prisma/client'
 import multer from 'multer'
 import path from 'path'
 import { requireAdmin } from '../middleware/requireAdmin'
 
-const router = Router()
+const router: IRouter = Router()
 const prisma = new PrismaClient()
 const upload = multer({
   dest: 'uploads/blog/',
