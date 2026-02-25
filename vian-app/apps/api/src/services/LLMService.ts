@@ -32,46 +32,39 @@ NEVER generate: vite.config.ts, vite.config.js, index.html (at root), src/main.t
 NEVER use: vite, webpack, parcel, create-react-app, react-scripts, esbuild
 NEVER modify: package.json — doing so will break the project immediately
 
-You are VIAN's code generation engine. Generate Next.js 14 App Router applications.
-
-CONTEXT:
-The following boilerplate files are ALREADY planted in the project before you run.
-DO NOT re-generate these:
-  package.json, next.config.js, tsconfig.json, postcss.config.js, lib/utils.ts
+You are VIAN's code generation engine. Generate complete, production-quality Next.js 14 App Router applications.
 
 OUTPUT FORMAT — CRITICAL:
-Return ONLY SSE data lines. Each must be a single line of valid JSON:
-data: {"type": "file", "path": "app/page.tsx", "content": "...full file on one line, newlines as \\n..."}
-After all files: data: {"type": "complete"}
-Zero markdown. Zero explanation. SSE data lines ONLY.
+Return ONLY raw JSON objects, one per line. Each must be complete valid JSON:
+{"type": "file", "path": "app/page.tsx", "content": "...full file content, newlines as \\n..."}
+After all files: {"type": "complete"}
+Zero markdown. Zero explanation. Zero preamble. Raw JSON objects ONLY.
 
-GENERATE FILES IN THIS EXACT ORDER (no exceptions):
-1. app/globals.css        — Tailwind directives + custom CSS vars/fonts
-2. app/layout.tsx         — RootLayout with metadata, font imports if any
-3. tailwind.config.ts     — only if you need custom colors/fonts; else skip
-4. app/page.tsx           — MOST IMPORTANT: full working UI, emitted FIRST ← triggers preview
-5. components/[Name].tsx  — all components the page imports
-6. lib/[name].ts          — any utilities/hooks
-7. app/[route]/page.tsx   — additional pages if the app needs them
-8. app/[route]/layout.tsx — nested layouts if needed
+GENERATE FILES IN THIS EXACT ORDER:
+1. app/globals.css        — Tailwind directives + custom CSS vars/fonts/animations
+2. app/layout.tsx         — RootLayout with metadata, font imports
+3. tailwind.config.ts     — custom colors/fonts/animations (always include for good design)
+4. app/page.tsx           — MOST IMPORTANT: full working UI, triggers preview
+5. components/[Name].tsx  — all components imported by the page (one file per component)
+6. lib/[name].ts          — utilities, constants, mock data
+7. app/[route]/page.tsx   — additional pages if the app has routing
+
+COMPLETENESS REQUIREMENTS — NON-NEGOTIABLE:
+- Every component must be FULLY IMPLEMENTED. No "// TODO", no placeholder text, no empty functions.
+- app/page.tsx must be at least 80 lines of real, working UI code.
+- Generate AT LEAST 3-5 files total (page + components + styles).
+- Components must have real props, real state, real event handlers.
+- Use realistic mock data (arrays of objects with real-looking content).
+- The app must look polished: proper spacing, colors, hover states, transitions.
+- Dark theme by default: bg-gray-950/bg-gray-900 backgrounds, white/gray-300 text.
+- Use Tailwind utility classes extensively — no inline styles.
+- lucide-react icons to make it look professional.
 
 RULES:
-- Use Next.js 14 App Router. Use app/ directory. NEVER use pages/ directory.
+- Use Next.js 14 App Router. Use app/ directory ONLY. NEVER pages/ directory.
 - Add "use client" at top of any file using useState/useEffect/event handlers.
-- TypeScript strict. No any. All props must have explicit types.
-- Tailwind CSS only. Dark theme: bg-gray-950/900/800, text-gray-100/300.
-- lucide-react for icons. clsx for conditional classes.
-- Real, complete, working UI. No blank screens. No TODO. Every function complete.
-- Only use packages already in package.json: next, react, react-dom, clsx, lucide-react, tailwindcss.
-- Do NOT add new dependencies. Do NOT import packages not listed above.
-- app/page.tsx MUST be emitted early (position 4) — it triggers the dev server startup.
-
-CORRECT app/page.tsx example structure:
-\`\`\`
-'use client'
-import { useState } from 'react'
-// ... real complete component
-\`\`\``
+- ALL props must have explicit TypeScript types. No implicit any.
+- Only use packages already in package.json: next, react, react-dom, clsx, lucide-react, tailwindcss.`
 const EDIT_SYSTEM_PROMPT = `You are VIAN's code editor for Next.js 14 App Router + TypeScript + Tailwind CSS applications.
 
 You will receive:
@@ -109,8 +102,7 @@ function extractEvents(buffer: string): { events: GenerationEvent[]; remaining: 
   // Strip markdown fences so they don't confuse the parser
   const stripped = buffer.replace(/```(?:json)?\s*/g, '')
 
-  // Find every '{' and try to extract a balanced JSON object from it
-  const consumed = new Set<number>()
+  let lastEnd = 0
   let i = 0
 
   while (i < stripped.length) {
@@ -143,9 +135,8 @@ function extractEvents(buffer: string): { events: GenerationEvent[]; remaining: 
     try {
       const parsed = JSON.parse(candidate) as GenerationEvent
       if (parsed.type === 'file' || parsed.type === 'complete' || parsed.type === 'error') {
-        // Mark this range as consumed
-        for (let k = i; k < j; k++) consumed.add(k)
         events.push(parsed)
+        lastEnd = j
         i = j
         continue
       }
@@ -154,11 +145,8 @@ function extractEvents(buffer: string): { events: GenerationEvent[]; remaining: 
     i++
   }
 
-  // Remaining = everything not yet consumed (the tail that might be incomplete)
-  // Keep only from the last consumed position onward
-  const lastConsumed = consumed.size > 0 ? Math.max(...consumed) + 1 : 0
-  const remaining = stripped.slice(lastConsumed)
-
+  // Remaining = everything after the last successfully parsed object
+  const remaining = stripped.slice(lastEnd)
   return { events, remaining }
 }
 

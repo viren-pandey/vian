@@ -26,6 +26,7 @@ export default function ChatPanel({ onEdit, onGenerate }: ChatPanelProps) {
   const wasGenerating = useRef(false)
   const isEditMode = useRef(false)
   const lastEditedFile = useRef<string>('')
+  const lastRuntimeError = useRef('')
   const { isGenerating, model, setModel, files, errorMessage } = useProjectStore()
 
   const currentModel = MODELS.find((m) => m.id === model) ?? MODELS[0]
@@ -54,6 +55,27 @@ export default function ChatPanel({ onEdit, onGenerate }: ChatPanelProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Capture runtime errors forwarded from the preview iframe via postMessage
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'preview-error') {
+        const msg = String(e.data.message ?? '')
+        lastRuntimeError.current = msg
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: `⚠️ Preview error detected:\n\`${msg}\`\n\nType "fix the error" and I will patch it.`,
+            timestamp: new Date(),
+          },
+        ])
+      }
+    }
+    window.addEventListener('message', handler)
+    return () => window.removeEventListener('message', handler)
+  }, [])
 
   useEffect(() => {
     if (wasGenerating.current && !isGenerating) {
@@ -115,7 +137,14 @@ export default function ChatPanel({ onEdit, onGenerate }: ChatPanelProps) {
 
     if (hasFiles) {
       isEditMode.current = true
-      onEdit(trimmed, (editedPath) => { lastEditedFile.current = editedPath })
+      // Auto-inject error context when the user is asking to fix something
+      const errorCtx = lastRuntimeError.current || errorMessage || ''
+      const isFixRequest = /fix|error|broken|crash|bug|issue|doesn.t work|not work/i.test(trimmed)
+      const instruction = (isFixRequest && errorCtx)
+        ? `${trimmed}\n\nError context to fix:\n${errorCtx}`
+        : trimmed
+      lastRuntimeError.current = ''
+      onEdit(instruction, (editedPath) => { lastEditedFile.current = editedPath })
     } else {
       isEditMode.current = false
       onGenerate(trimmed)

@@ -146,6 +146,16 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: \`
+          window.onerror = function(msg, src, line, col, err) {
+            window.parent && window.parent.postMessage({ type: 'preview-error', message: (err && err.message) || msg }, '*');
+          };
+          window.addEventListener('unhandledrejection', function(e) {
+            window.parent && window.parent.postMessage({ type: 'preview-error', message: e.reason && e.reason.message ? e.reason.message : String(e.reason) }, '*');
+          });
+        \` }} />
+      </head>
       <body>{children}</body>
     </html>
   )
