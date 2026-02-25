@@ -75,52 +75,91 @@ import { useState } from 'react'
 const EDIT_SYSTEM_PROMPT = `You are VIAN's code editor for Next.js 14 App Router + TypeScript + Tailwind CSS applications.
 
 You will receive:
-1. The user's edit instruction
-2. The current file path and its full content
+1. The user's edit instruction (may include a runtime error to fix)
+2. ALL current project files so you have full context
 
-Return ONLY SSE events for every file that changed or is newly created:
-data: {"type": "file", "path": "app/page.tsx", "content": "...full file content on one line, newlines as \\n..."}
+Your job: understand the FULL app structure, fix the problem or apply the change across ALL files that need changing.
+
+Return ONLY SSE events — one JSON object per line, NO markdown, NO explanation:
+data: {"type": "file", "path": "app/page.tsx", "content": "...full file content, newlines as \\n..."}
+data: {"type": "file", "path": "components/Navbar.tsx", "content": "..."}
 data: {"type": "complete"}
 
 Rules:
-- ONLY data: lines. No markdown, no explanation, no preamble.
-- Return FULL file content every time (not diffs).
-- Multiple file events allowed if the change affects multiple files.
-- Preserve all existing functionality not mentioned in the edit instruction.
-- Keep same import paths and folder structure (app/, components/, lib/).
-- Add "use client" at top of any file that needs React hooks or event handlers.
-- Tailwind CSS only. Dark theme: bg-gray-950/900/800, text-gray-100/300.
+- Output data: lines ONLY. Absolutely zero markdown, preamble, or explanation.
+- Return FULL file content for every file you touch (never partial diffs).
+- Fix ALL files involved in an error — if a component is broken, fix it AND its imports.
+- When fixing a runtime error: read the error carefully, find the root cause across files, fix it.
+- Preserve all existing functionality not mentioned in the instruction.
+- Add "use client" at top of any file using React hooks or event handlers.
+- Tailwind CSS only for styling. Dark theme: bg-gray-950/900/800, text-gray-100/300.
 - Use lucide-react for icons, clsx for conditional classes.
-- Only use packages in the pre-planted package.json: next, react, react-dom, clsx, lucide-react.
+- Only use packages in package.json: next, react, react-dom, clsx, lucide-react.
 - No TODO comments. Every function complete and working.`
 
 // ─── Buffer parser — extract complete SSE events from a stream buffer ─────────
+// Uses balanced-brace extraction so it handles:
+//   • Multi-line JSON (real newlines inside content field)
+//   • Preamble/explanation text from the model before data: lines
+//   • Markdown code fences (```json ... ```)
+//   • Missing "data: " prefix — looks for raw JSON objects too
 function extractEvents(buffer: string): { events: GenerationEvent[]; remaining: string } {
   const events: GenerationEvent[] = []
-  const lines = buffer.split('\n')
-  const incomplete: string[] = []
+
+  // Strip markdown fences so they don't confuse the parser
+  const stripped = buffer.replace(/```(?:json)?\s*/g, '')
+
+  // Find every '{' and try to extract a balanced JSON object from it
+  const consumed = new Set<number>()
   let i = 0
 
-  while (i < lines.length) {
-    const line = lines[i].trim()
+  while (i < stripped.length) {
+    if (stripped[i] !== '{') { i++; continue }
 
-    if (line.startsWith('data: ')) {
-      const raw = line.slice(6).trim()
-      try {
-        const parsed = JSON.parse(raw) as GenerationEvent
-        events.push(parsed)
-      } catch {
-        // Incomplete JSON — keep in buffer
-        incomplete.push(line)
+    // Walk forward counting braces to find a balanced JSON object
+    let depth = 0
+    let inString = false
+    let escape = false
+    let j = i
+
+    while (j < stripped.length) {
+      const ch = stripped[j]
+      if (escape)          { escape = false }
+      else if (ch === '\\') { escape = true }
+      else if (ch === '"')  { inString = !inString }
+      else if (!inString) {
+        if (ch === '{') depth++
+        else if (ch === '}') {
+          depth--
+          if (depth === 0) { j++; break }
+        }
       }
-    } else if (line !== '') {
-      // Non-data line that might be a partial SSE event — keep
-      incomplete.push(line)
+      j++
     }
+
+    if (depth !== 0) { i++; continue } // unbalanced — not a complete object
+
+    const candidate = stripped.slice(i, j)
+    try {
+      const parsed = JSON.parse(candidate) as GenerationEvent
+      if (parsed.type === 'file' || parsed.type === 'complete' || parsed.type === 'error') {
+        // Mark this range as consumed
+        for (let k = i; k < j; k++) consumed.add(k)
+        events.push(parsed)
+        i = j
+        continue
+      }
+    } catch { /* not valid JSON — skip */ }
+
     i++
   }
 
-  return { events, remaining: incomplete.join('\n') }
+  // Remaining = everything not yet consumed (the tail that might be incomplete)
+  // Keep only from the last consumed position onward
+  const lastConsumed = consumed.size > 0 ? Math.max(...consumed) + 1 : 0
+  const remaining = stripped.slice(lastConsumed)
+
+  return { events, remaining }
 }
 
 // ─── LLMService class ─────────────────────────────────────────────────────────
@@ -149,9 +188,20 @@ export class LLMService {
     instruction: string,
     currentContent: string,
     filePath: string,
-    model: string
+    model: string,
+    allFiles?: Record<string, string>
   ): AsyncGenerator<GenerationEvent> {
-    const userMessage = `Edit instruction: ${instruction}\n\nFile: ${filePath}\n\nCurrent content:\n${currentContent}`
+    // Build a rich context block with ALL current files
+    let filesContext = ''
+    if (allFiles && Object.keys(allFiles).length > 0) {
+      filesContext = Object.entries(allFiles)
+        .map(([path, content]) => `=== ${path} ===\n${content}`)
+        .join('\n\n')
+    } else {
+      filesContext = `=== ${filePath} ===\n${currentContent}`
+    }
+
+    const userMessage = `EDIT INSTRUCTION:\n${instruction}\n\nCURRENT PROJECT FILES:\n${filesContext}`
 
     if (model.startsWith('claude')) {
       yield* this.streamAnthropic(EDIT_SYSTEM_PROMPT, userMessage)

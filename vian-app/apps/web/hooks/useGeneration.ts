@@ -200,7 +200,16 @@ export function useGeneration() {
       const res = await fetch(`${API_BASE}/edit`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ fileToEdit: smartFile, instruction, model, currentContent }),
+        body:    JSON.stringify({
+          fileToEdit: smartFile,
+          instruction,
+          model,
+          currentContent,
+          // Send ALL current files so AI has full context to fix cross-file errors
+          allFiles: Object.fromEntries(
+            Object.entries(files).map(([path, node]) => [path, node.content])
+          ),
+        }),
       })
       if (!res.ok || !res.body) throw new Error((await res.text()) || `HTTP ${res.status}`)
 

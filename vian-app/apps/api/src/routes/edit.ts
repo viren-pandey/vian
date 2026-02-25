@@ -6,10 +6,10 @@ export const editRouter: IRouter = Router()
 editRouter.post(
   '/',
   async (
-    req: Request<Record<string, never>, unknown, { fileToEdit: string; instruction: string; model: string; currentContent?: string }>,
+    req: Request<Record<string, never>, unknown, { fileToEdit: string; instruction: string; model: string; currentContent?: string; allFiles?: Record<string, string> }>,
     res: Response
   ) => {
-    const { fileToEdit, instruction, model, currentContent = '' } = req.body
+    const { fileToEdit, instruction, model, currentContent = '', allFiles } = req.body
 
     if (!instruction?.trim()) {
       res.status(400).json({ error: 'instruction is required' })
@@ -33,7 +33,7 @@ editRouter.post(
     const llm = new LLMService()
 
     try {
-      for await (const event of llm.editFile(instruction, currentContent, fileToEdit ?? '', model)) {
+      for await (const event of llm.editFile(instruction, currentContent, fileToEdit ?? '', model, allFiles)) {
         if (event.type === 'file') {
           send({ type: 'file', path: event.path, content: event.content, language: event.language })
         } else if (event.type === 'complete') {
