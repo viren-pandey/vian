@@ -1,24 +1,30 @@
-'use client'
+﻿'use client'
 
 import { RefreshCw } from 'lucide-react'
-
-type ContainerStatus = 'idle' | 'booting' | 'installing' | 'running' | 'error'
+import type { WCStatus } from '@/hooks/useWebContainer'
 
 interface PreviewPanelProps {
   url: string | null
-  isLoading: boolean
-  containerStatus: ContainerStatus
+  status: WCStatus
 }
 
-const STATUS_LABEL: Record<ContainerStatus, string> = {
+const STATUS_LABEL: Record<WCStatus, string> = {
   idle:       'No preview',
   booting:    'Booting sandbox...',
   installing: 'Installing dependencies...',
-  running:    'Running',
+  running:    'localhost:3000',
   error:      'Error — check console',
 }
 
-export default function PreviewPanel({ url, isLoading, containerStatus }: PreviewPanelProps) {
+export default function PreviewPanel({ url, status }: PreviewPanelProps) {
+  const isLoading = status !== 'running' && status !== 'idle' && status !== 'error'
+  const dotColor =
+    status === 'running'    ? 'bg-green-500' :
+    status === 'installing' ? 'bg-amber-400 animate-pulse' :
+    status === 'booting'    ? 'bg-amber-400 animate-pulse' :
+    status === 'error'      ? 'bg-red-500' :
+    'bg-[#444]'
+
   return (
     <div className="flex flex-col h-full bg-surface">
       {/* Browser chrome */}
@@ -32,9 +38,9 @@ export default function PreviewPanel({ url, isLoading, containerStatus }: Previe
 
         {/* Address bar */}
         <div className="flex-1 bg-base rounded px-2 py-0.5 flex items-center gap-2">
-          {url && <span className="w-1.5 h-1.5 rounded-full bg-success flex-shrink-0" />}
+          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor}`} />
           <span className="text-2xs text-text-muted font-code truncate">
-            {url ?? STATUS_LABEL[containerStatus]}
+            {STATUS_LABEL[status]}
           </span>
         </div>
 
@@ -54,37 +60,43 @@ export default function PreviewPanel({ url, isLoading, containerStatus }: Previe
 
       {/* Preview area */}
       <div className="flex-1 relative bg-white">
-        {/* Loading */}
-        {(isLoading && !url) && (
+        {/* Loading overlay */}
+        {isLoading && !url && (
           <div className="absolute inset-0 bg-surface flex flex-col items-center justify-center gap-3 z-10">
             <div className="w-7 h-7 border border-accent border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs text-text-muted font-ui">
-              {containerStatus === 'booting'
-                ? 'Booting sandbox...'
-                : containerStatus === 'installing'
-                ? 'Installing dependencies...'
-                : 'Starting dev server...'}
-            </p>
+            <p className="text-xs text-text-muted font-ui">{STATUS_LABEL[status]}</p>
           </div>
         )}
 
-        {/* Live iframe */}
+        {/* Live iframe — opacity transition */}
         {url && (
           <iframe
             id="preview-iframe"
             src={url}
-            className="w-full h-full border-0 animate-preview-ready"
+            className={`w-full h-full border-0 transition-opacity duration-500 ${
+              status === 'running' ? 'opacity-100' : 'opacity-0'
+            }`}
             title="VIAN Live Preview"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
           />
         )}
 
         {/* Empty state */}
-        {!isLoading && !url && (
+        {status === 'idle' && !url && (
           <div className="absolute inset-0 bg-surface flex flex-col items-center justify-center gap-3">
             <span className="text-5xl opacity-[0.05] text-text-primary">◻</span>
             <p className="text-2xs text-text-muted font-ui text-center px-6 leading-relaxed">
               Live preview will show here once your app is generated
+            </p>
+          </div>
+        )}
+
+        {/* Error state */}
+        {status === 'error' && (
+          <div className="absolute inset-0 bg-surface flex flex-col items-center justify-center gap-3">
+            <span className="text-5xl opacity-[0.05] text-red-400">⚠</span>
+            <p className="text-2xs text-red-400 font-ui text-center px-6 leading-relaxed">
+              Container error — check the terminal for details
             </p>
           </div>
         )}

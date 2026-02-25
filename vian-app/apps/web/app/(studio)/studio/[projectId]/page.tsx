@@ -18,14 +18,10 @@ export default function StudioPage() {
   const searchParams = useSearchParams()
   const urlPrompt = searchParams.get('prompt')
   const { activeFile, files, isGenerating, previewUrl } = useProjectStore()
-  const { generate, editFile, registerContainer } = useGeneration()
-  const { writeFile, install, startDev, status: containerStatus, logs } = useWebContainer()
+  const { generate, editFile } = useGeneration()
+  const { status, logs } = useWebContainer()
   const hasAutoStarted = useRef(false)
   const [leftTab, setLeftTab] = useState<'chat' | 'files'>('chat')
-
-  useEffect(() => {
-    registerContainer(writeFile, install, startDev)
-  }, [registerContainer, writeFile, install, startDev])
 
   useEffect(() => {
     if (urlPrompt && !hasAutoStarted.current) {
@@ -138,7 +134,7 @@ export default function StudioPage() {
 
           {/* Terminal panel at bottom */}
           <div className="h-44 flex-shrink-0 border-t border-[#1f1f1f]">
-            <TerminalPanel logs={logs} status={containerStatus} />
+            <TerminalPanel logs={logs} status={status} />
           </div>
         </main>
 
@@ -146,8 +142,7 @@ export default function StudioPage() {
         <aside className="w-[42%] flex-shrink-0 border-l border-[#1f1f1f] flex flex-col">
           <PreviewPanel
             url={previewUrl}
-            isLoading={containerStatus === 'booting' || containerStatus === 'installing'}
-            containerStatus={containerStatus}
+            status={status}
           />
         </aside>
       </div>

@@ -202,6 +202,11 @@ export default function CodeEditor({ filePath, content, isLoading }: CodeEditorP
             if (!filePath || val === undefined) return
             setFile(filePath, { path: filePath, content: val, status: 'complete' })
           }}
+          beforeMount={(monaco) => {
+            monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+              diagnosticCodesToIgnore: [2307, 7016, 2304],
+            })
+          }}
           theme="vs-dark"
           options={{
             fontSize: 15,
