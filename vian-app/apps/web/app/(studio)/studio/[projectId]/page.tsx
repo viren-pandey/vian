@@ -137,34 +137,34 @@ export default function StudioPage() {
           <div className="flex h-9 border-b border-[#1f1f1f] flex-shrink-0">
             <button
               onClick={() => setLeftTab('chat')}
-              className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-medium transition-colors ${
+              className={`flex-1 flex items-center justify-center gap-1.5 text-[12px] font-medium transition-colors ${
                 leftTab === 'chat'
                   ? 'text-white border-b border-accent -mb-px'
                   : 'text-[#555] hover:text-[#888]'
               }`}
             >
-              <MessageSquare size={11} />
+              <MessageSquare size={12} />
               Chat
             </button>
             <button
               onClick={() => setLeftTab('files')}
-              className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-medium transition-colors ${
+              className={`flex-1 flex items-center justify-center gap-1.5 text-[12px] font-medium transition-colors ${
                 leftTab === 'files'
                   ? 'text-white border-b border-accent -mb-px'
                   : 'text-[#555] hover:text-[#888]'
               }`}
             >
-              <FolderOpen size={11} />
+              <FolderOpen size={12} />
               Files
               {fileCount > 0 && (
-                <span className="text-[9px] bg-[#2a2a2a] text-[#666] px-1 rounded">{fileCount}</span>
+                <span className="text-[10px] bg-[#2a2a2a] text-[#666] px-1 rounded">{fileCount}</span>
               )}
             </button>
           </div>
 
           {/* Tab content */}
           {leftTab === 'chat' ? (
-            <ChatPanel onGenerate={generate} onEdit={editFile} />
+            <ChatPanel onGenerate={generate} onEdit={editFile} terminalLogs={logs} />
           ) : (
             <div className="flex-1 overflow-y-auto">
               <FileExplorer />
