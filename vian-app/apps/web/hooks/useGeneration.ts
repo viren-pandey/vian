@@ -42,7 +42,60 @@ export function useGeneration() {
       setErrorMessage(null)
 
       const localFiles: Record<string, string> = {}
-      let devStarted = false
+
+      // Config files the AI must NEVER overwrite
+      const BLOCKED_PATHS = new Set([
+        'package.json',
+        'next.config.js',
+        'tsconfig.json',
+        'postcss.config.js',
+      ])
+
+      // Canonical configs re-enforced after AI stream ends
+      const CORRECT_PACKAGE_JSON = `{
+  "name": "vian-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "14.2.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "clsx": "2.1.1",
+    "lucide-react": "0.395.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.2",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "autoprefixer": "10.4.19",
+    "postcss": "8.4.38",
+    "tailwindcss": "3.4.4",
+    "typescript": "5.4.5"
+  }
+}`
+
+      const CORRECT_NEXT_CONFIG = `/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+        ],
+      },
+    ]
+  },
+}
+module.exports = nextConfig`
 
       try {
         // Step 1 -- plant all boilerplate files into WebContainer + store
@@ -58,9 +111,6 @@ export function useGeneration() {
         }
         // Show the placeholder page in the editor while AI works
         setActiveFile('app/page.tsx')
-
-        // Step 2 -- fire npm install in background (do NOT await)
-        const installDone = installRef.current?.() ?? Promise.resolve()
 
         // Step 3 -- call AI generation SSE endpoint
         const res = await fetch(`${API_BASE}/generate`, {
@@ -93,6 +143,13 @@ export function useGeneration() {
             const { path, content, language } = event as {
               path: string; content: string; language?: string
             }
+
+            // Fix 1: hard block — AI must never overwrite config files
+            if (BLOCKED_PATHS.has(path)) {
+              console.warn(`[VIAN] Blocked AI from overwriting: ${path}`)
+              return
+            }
+
             // Update editor store
             setFile(path, {
               path,
@@ -106,25 +163,7 @@ export function useGeneration() {
             // Write to WebContainer filesystem
             await writeFileRef.current?.(path, content)
 
-            // Step 4 -- when AI delivers app/page.tsx, wait for install then startDev
-            if (
-              (path === 'app/page.tsx' || path === 'pages/index.tsx') &&
-              !devStarted
-            ) {
-              devStarted = true
-              installDone
-                .then(() => startDevRef.current?.())
-                .catch(console.error)
-            }
-
           } else if (event.type === 'complete') {
-            // Ensure dev started even if AI never emitted app/page.tsx
-            if (!devStarted) {
-              devStarted = true
-              installDone
-                .then(() => startDevRef.current?.())
-                .catch(console.error)
-            }
             // Focus main page in editor
             const mainFile =
               localFiles['app/page.tsx']   ? 'app/page.tsx'
@@ -147,6 +186,16 @@ export function useGeneration() {
             await processLine(line)
           }
         }
+
+        // Fix 2+3: Re-enforce correct configs AFTER AI stream ends, then install + boot
+        // This guarantees no Vite ever reaches npm run dev
+        await writeFileRef.current?.('package.json', CORRECT_PACKAGE_JSON)
+        await writeFileRef.current?.('next.config.js', CORRECT_NEXT_CONFIG)
+        console.log('[VIAN] Config files enforced — Vite blocked.')
+
+        // Fix 3: install and startDev AFTER generation (not before)
+        await installRef.current?.()
+        startDevRef.current?.()
 
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Generation failed'

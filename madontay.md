@@ -1,23 +1,36 @@
 # VIAN — Mandatory Project Boilerplate
-### Every generated project MUST start with these exact files.
-### Plant these FIRST before any AI generation begins.
-### Do not modify structure. Do not skip any file.
+### Plant these EXACT files before ANY AI generation starts.
+### Copy every file character-for-character. No changes.
 
 ---
 
-## WHY THIS EXISTS
+## THE PROBLEM THIS FILE SOLVES
 
-WebContainer boots Next.js correctly ONLY when these files exist
-in the correct paths with the correct content.
+The AI sometimes generates:
+- Vite projects instead of Next.js → "command not found: vite"
+- Wrong folder structure → "Couldn't find app directory"
+- Version ranges like ^14 → npm install hangs forever
+- Missing postcss → Tailwind doesn't compile
+- Missing COOP/COEP headers → WebContainer won't run
 
-If ANY of these files is missing, wrong path, or malformed:
-- Next.js throws "Couldn't find any pages or app directory"
-- Preview stays blank
-- npm install hangs or fails
-- Tailwind does not compile
+This boilerplate is planted FIRST, before the AI runs.
+The AI then overwrites only `app/page.tsx` and `components/`.
+It never touches `package.json`, `next.config.js`, or config files.
 
-Plant ALL files below BEFORE calling the AI generation API.
-Then let AI overwrite `app/page.tsx` and `components/` with real content.
+---
+
+## MANDATORY RULE FOR AI GENERATION PROMPT
+
+Add this line to the TOP of every AI system prompt:
+
+```
+CRITICAL: This is a Next.js 14 project using the App Router.
+NEVER use Vite. NEVER use Create React App. NEVER use Express for the frontend.
+ONLY generate files for: app/, components/, lib/, hooks/
+NEVER regenerate or modify: package.json, next.config.js, tsconfig.json,
+postcss.config.js, tailwind.config.ts
+These config files are already correct. Touching them breaks the project.
+```
 
 ---
 
@@ -29,32 +42,38 @@ Then let AI overwrite `app/page.tsx` and `components/` with real content.
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev":   "next dev",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint":  "next lint"
+    "lint": "next lint"
   },
   "dependencies": {
-    "next":      "14.2.5",
-    "react":     "18.3.1",
+    "next": "14.2.5",
+    "react": "18.3.1",
     "react-dom": "18.3.1",
-    "clsx":      "2.1.1",
+    "clsx": "2.1.1",
     "lucide-react": "0.395.0"
   },
   "devDependencies": {
-    "@types/node":      "20.14.2",
-    "@types/react":     "18.3.3",
+    "@types/node": "20.14.2",
+    "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
-    "autoprefixer":     "10.4.19",
-    "postcss":          "8.4.38",
-    "tailwindcss":      "3.4.4",
-    "typescript":       "5.4.5"
+    "autoprefixer": "10.4.19",
+    "postcss": "8.4.38",
+    "tailwindcss": "3.4.4",
+    "typescript": "5.4.5"
   }
 }
 ```
 
-> CRITICAL: Use EXACT versions (no ^ or ~).
-> Version ranges cause npm install to hang inside WebContainer.
+### CRITICAL RULES FOR package.json:
+```
+✓ "dev": "next dev"          ← MUST be this. Never "vite", never "react-scripts"
+✓ "next": "14.2.5"           ← exact version, no ^ or ~
+✓ "react": "18.3.1"          ← exact version, no ^ or ~
+✓ NO vite, NO webpack, NO parcel in dependencies
+✓ AI must NEVER overwrite this file
+```
 
 ---
 
@@ -86,8 +105,12 @@ const nextConfig = {
 module.exports = nextConfig
 ```
 
-> CRITICAL: COOP and COEP headers are REQUIRED for WebContainer.
-> Without them WebContainer cannot run at all.
+### CRITICAL:
+```
+✓ module.exports = nextConfig   ← CommonJS, NOT export default
+✓ COOP + COEP headers           ← WebContainer WILL NOT WORK without these
+✓ AI must NEVER overwrite this file
+```
 
 ---
 
@@ -132,6 +155,12 @@ module.exports = {
 }
 ```
 
+### CRITICAL:
+```
+✓ module.exports not export default
+✓ This file MUST exist or Tailwind CSS will not compile at all
+```
+
 ---
 
 ## FILE 5 — `tailwind.config.ts`
@@ -146,12 +175,7 @@ const config: Config = {
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
-    extend: {
-      colors: {
-        background: 'var(--background)',
-        foreground: 'var(--foreground)',
-      },
-    },
+    extend: {},
   },
   plugins: [],
 }
@@ -168,36 +192,30 @@ export default config
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Oxygen, Ubuntu, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+```
+
+### CRITICAL:
+```
+✓ @tailwind base/components/utilities MUST be first 3 lines
+✓ File MUST be at app/globals.css not src/globals.css
 ```
 
 ---
@@ -226,9 +244,16 @@ export default function RootLayout({
 }
 ```
 
+### CRITICAL:
+```
+✓ imports './globals.css'   ← MUST import CSS here
+✓ returns <html><body>      ← MUST have both tags
+✓ file at app/layout.tsx    ← NOT src/app/layout.tsx
+```
+
 ---
 
-## FILE 8 — `app/page.tsx`
+## FILE 8 — `app/page.tsx` (Loading Placeholder)
 
 ```tsx
 export default function Page() {
@@ -237,35 +262,36 @@ export default function Page() {
       style={{
         minHeight: '100vh',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#0a0a0a',
-        flexDirection: 'column',
-        gap: '12px',
+        backgroundColor: '#0a0a0a',
+        gap: '16px',
       }}
     >
       <div
         style={{
-          width: '8px',
-          height: '8px',
+          width: '10px',
+          height: '10px',
           borderRadius: '50%',
-          background: '#3b82f6',
-          animation: 'pulse 1.4s ease-in-out infinite',
+          backgroundColor: '#3b82f6',
+          animation: 'vian-pulse 1.4s ease-in-out infinite',
         }}
       />
       <p
         style={{
-          color: '#888888',
+          color: '#555555',
           fontSize: '13px',
           fontFamily: 'monospace',
+          letterSpacing: '0.05em',
         }}
       >
         Generating your app...
       </p>
       <style>{`
-        @keyframes pulse {
+        @keyframes vian-pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.4; transform: scale(0.75); }
+          50% { opacity: 0.3; transform: scale(0.7); }
         }
       `}</style>
     </main>
@@ -273,10 +299,13 @@ export default function Page() {
 }
 ```
 
-> This renders immediately when Next.js boots.
-> Shows a pulsing blue dot + "Generating your app..."
-> AI will overwrite this with the real page content.
-> Uses inline styles (not Tailwind) so it works before CSS compiles.
+### CRITICAL:
+```
+✓ Uses ONLY inline styles — no Tailwind, no imports
+✓ This renders instantly before CSS compiles
+✓ AI overwrites this with real content — that's expected
+✓ Never import anything in this file — it must be self-contained
+```
 
 ---
 
@@ -285,136 +314,67 @@ export default function Page() {
 ```ts
 import { type ClassValue, clsx } from 'clsx'
 
-export function cn(...inputs: ClassValue[]) {
+export function cn(...inputs: ClassValue[]): string {
   return clsx(inputs)
 }
 
 export function formatDate(date: string | Date): string {
   return new Intl.DateTimeFormat('en-US', {
     month: 'long',
-    day:   'numeric',
-    year:  'numeric',
+    day: 'numeric',
+    year: 'numeric',
   }).format(new Date(date))
 }
 
-export function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
+export function truncate(str: string, length: number): string {
+  return str.length > length ? str.slice(0, length) + '...' : str
 }
 ```
 
 ---
 
-## HOW TO PLANT THESE FILES
-
-In your `useGeneration.ts` hook, plant all boilerplate files
-BEFORE calling the AI generation API:
+## THE BOILERPLATE CONSTANT — paste into `lib/boilerplate.ts`
 
 ```typescript
-// hooks/useGeneration.ts
-
-import { BOILERPLATE_FILES } from '@/lib/boilerplate'
-
-export function useGeneration() {
-  const { writeFile, install, startDev } = useWebContainer()
-
-  async function generate(prompt: string, model: string) {
-
-    // ─── STEP 1: Plant all boilerplate files first ──────────────
-    for (const file of BOILERPLATE_FILES) {
-      await writeFile(file.path, file.content)
-    }
-
-    // ─── STEP 2: Start npm install immediately ───────────────────
-    // Don't wait — runs in background while AI generates
-    install()
-
-    // ─── STEP 3: Call AI generation API (SSE stream) ────────────
-    const response = await fetch('/api/generate', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ prompt, model }),
-    })
-
-    const reader  = response.body!.getReader()
-    const decoder = new TextDecoder()
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const lines = decoder.decode(value).split('\n').filter(Boolean)
-
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue
-
-        const event = JSON.parse(line.slice(6))
-
-        if (event.type === 'file') {
-          // AI overwrites boilerplate files with real content
-          await writeFile(event.path, event.content)
-
-          // Start dev server the moment real page.tsx lands
-          if (event.path === 'app/page.tsx') {
-            startDev()
-          }
-        }
-      }
-    }
-  }
-
-  return { generate }
-}
-```
-
----
-
-## BOILERPLATE FILES CONSTANT
-
-Store all boilerplate as a typed constant so it's always consistent:
-
-```typescript
-// lib/boilerplate.ts
+// apps/web/lib/boilerplate.ts
+// This is the source of truth for all boilerplate files.
+// Written to WebContainer before any AI generation begins.
 
 export interface BoilerplateFile {
-  path:    string
+  path: string
   content: string
 }
 
 export const BOILERPLATE_FILES: BoilerplateFile[] = [
   {
     path: 'package.json',
-    content: JSON.stringify({
-      name: 'vian-app',
-      version: '0.1.0',
-      private: true,
-      scripts: {
-        dev:   'next dev',
-        build: 'next build',
-        start: 'next start',
-        lint:  'next lint',
-      },
-      dependencies: {
-        next:           '14.2.5',
-        react:          '18.3.1',
-        'react-dom':    '18.3.1',
-        clsx:           '2.1.1',
-        'lucide-react': '0.395.0',
-      },
-      devDependencies: {
-        '@types/node':      '20.14.2',
-        '@types/react':     '18.3.3',
-        '@types/react-dom': '18.3.0',
-        autoprefixer:       '10.4.19',
-        postcss:            '8.4.38',
-        tailwindcss:        '3.4.4',
-        typescript:         '5.4.5',
-      },
-    }, null, 2),
+    content: `{
+  "name": "vian-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "14.2.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "clsx": "2.1.1",
+    "lucide-react": "0.395.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.2",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "autoprefixer": "10.4.19",
+    "postcss": "8.4.38",
+    "tailwindcss": "3.4.4",
+    "typescript": "5.4.5"
+  }
+}`,
   },
 
   {
@@ -428,7 +388,7 @@ const nextConfig = {
         source: '/(.*)',
         headers: [
           { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
-          { key: 'Cross-Origin-Opener-Policy',   value: 'same-origin'  },
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
         ],
       },
     ]
@@ -439,27 +399,27 @@ module.exports = nextConfig`,
 
   {
     path: 'tsconfig.json',
-    content: JSON.stringify({
-      compilerOptions: {
-        target:            'ES2017',
-        lib:               ['dom', 'dom.iterable', 'esnext'],
-        allowJs:           true,
-        skipLibCheck:      true,
-        strict:            true,
-        noEmit:            true,
-        esModuleInterop:   true,
-        module:            'esnext',
-        moduleResolution:  'bundler',
-        resolveJsonModule: true,
-        isolatedModules:   true,
-        jsx:               'preserve',
-        incremental:       true,
-        plugins:           [{ name: 'next' }],
-        paths:             { '@/*': ['./*'] },
-      },
-      include:  ['next-env.d.ts', '**/*.ts', '**/*.tsx', '.next/types/**/*.ts'],
-      exclude:  ['node_modules'],
-    }, null, 2),
+    content: `{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
+    "paths": { "@/*": ["./*"] }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}`,
   },
 
   {
@@ -475,7 +435,6 @@ module.exports = nextConfig`,
   {
     path: 'tailwind.config.ts',
     content: `import type { Config } from 'tailwindcss'
-
 const config: Config = {
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
@@ -485,7 +444,6 @@ const config: Config = {
   theme: { extend: {} },
   plugins: [],
 }
-
 export default config`,
   },
 
@@ -495,8 +453,8 @@ export default config`,
 @tailwind components;
 @tailwind utilities;
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }`,
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }`,
   },
 
   {
@@ -524,31 +482,10 @@ export default function RootLayout({
     path: 'app/page.tsx',
     content: `export default function Page() {
   return (
-    <main style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#0a0a0a',
-      flexDirection: 'column',
-      gap: '12px',
-    }}>
-      <div style={{
-        width: '8px',
-        height: '8px',
-        borderRadius: '50%',
-        background: '#3b82f6',
-        animation: 'pulse 1.4s ease-in-out infinite',
-      }} />
-      <p style={{ color: '#888888', fontSize: '13px', fontFamily: 'monospace' }}>
-        Generating your app...
-      </p>
-      <style>{\`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.4; transform: scale(0.75); }
-        }
-      \`}</style>
+    <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0a0a0a', gap: '16px' }}>
+      <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#3b82f6', animation: 'vian-pulse 1.4s ease-in-out infinite' }} />
+      <p style={{ color: '#555555', fontSize: '13px', fontFamily: 'monospace' }}>Generating your app...</p>
+      <style>{\`@keyframes vian-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.3;transform:scale(0.7)} }\`}</style>
     </main>
   )
 }`,
@@ -557,79 +494,260 @@ export default function RootLayout({
   {
     path: 'lib/utils.ts',
     content: `import { type ClassValue, clsx } from 'clsx'
-
-export function cn(...inputs: ClassValue[]) {
-  return clsx(inputs)
-}`,
+export function cn(...inputs: ClassValue[]): string { return clsx(inputs) }`,
   },
 ]
 ```
 
 ---
 
-## GENERATION ORDER — AI FILES
+## THE GENERATION HOOK — Full Implementation
 
-After boilerplate is planted, AI generates files in this exact order.
-The AI MUST follow this sequence. Never deviate.
+```typescript
+// apps/web/hooks/useGeneration.ts
+'use client'
 
-```
-BOILERPLATE (planted before AI starts):
-  ✓ package.json
-  ✓ next.config.js
-  ✓ tsconfig.json
-  ✓ postcss.config.js
-  ✓ tailwind.config.ts
-  ✓ app/globals.css
-  ✓ app/layout.tsx
-  ✓ app/page.tsx       ← shows "Generating..." placeholder
-  ✓ lib/utils.ts
+import { useWebContainer } from './useWebContainer'
+import { BOILERPLATE_FILES } from '@/lib/boilerplate'
+import { useProjectStore } from '@/stores/projectStore'
 
-AI GENERATES (overwrites in this order):
-  1.  app/globals.css         ← AI may add fonts, CSS variables
-  2.  app/layout.tsx          ← AI adds proper metadata, providers
-  3.  tailwind.config.ts      ← AI adds custom colors/fonts if needed
-  4.  app/page.tsx            ← AI overwrites with real UI ← triggers startDev()
-  5.  components/[Name].tsx   ← all components
-  6.  lib/[name].ts           ← utilities, hooks, helpers
-  7.  app/[route]/page.tsx    ← any additional pages
-  8.  app/[route]/layout.tsx  ← any nested layouts
+export function useGeneration() {
+  const { writeFile, install, startDev } = useWebContainer()
+  const { setFile, setIsGenerating, model } = useProjectStore()
+
+  async function generate(prompt: string) {
+    setIsGenerating(true)
+
+    // ── PHASE 1: Plant all boilerplate files ──────────────────────
+    // This happens BEFORE the AI is called.
+    // Guarantees Next.js can always boot regardless of what AI generates.
+    console.log('[VIAN] Planting boilerplate...')
+    for (const file of BOILERPLATE_FILES) {
+      await writeFile(file.path, file.content)
+      setFile(file.path, { content: file.content, status: 'complete' })
+    }
+    console.log('[VIAN] Boilerplate planted.')
+
+    // ── PHASE 2: Start npm install immediately ────────────────────
+    // Runs in background — do NOT await.
+    // package.json is already planted so this works right away.
+    install()
+
+    // ── PHASE 3: Stream AI-generated files ───────────────────────
+    const response = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getAccessToken()}`,
+      },
+      body: JSON.stringify({ prompt, model }),
+    })
+
+    if (!response.ok) {
+      console.error('[VIAN] Generation API error:', response.status)
+      setIsGenerating(false)
+      return
+    }
+
+    const reader = response.body!.getReader()
+    const decoder = new TextDecoder()
+    let devStarted = false
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const lines = decoder.decode(value).split('\n').filter(Boolean)
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+
+        let event: { type: string; path?: string; content?: string }
+        try {
+          event = JSON.parse(line.slice(6))
+        } catch {
+          continue
+        }
+
+        if (event.type === 'file' && event.path && event.content) {
+
+          // Validate path — never overwrite config files
+          const PROTECTED = [
+            'package.json',
+            'next.config.js',
+            'tsconfig.json',
+            'postcss.config.js',
+          ]
+          if (PROTECTED.includes(event.path)) {
+            console.warn(`[VIAN] AI tried to overwrite ${event.path} — blocked.`)
+            continue
+          }
+
+          // Write AI file to WebContainer
+          await writeFile(event.path, event.content)
+          setFile(event.path, { content: event.content, status: 'complete' })
+
+          // Start dev server the moment real page.tsx is written
+          if (event.path === 'app/page.tsx' && !devStarted) {
+            devStarted = true
+            console.log('[VIAN] page.tsx received — starting next dev...')
+            startDev()
+          }
+        }
+
+        if (event.type === 'complete') {
+          console.log('[VIAN] Generation complete.')
+          setIsGenerating(false)
+        }
+      }
+    }
+
+    setIsGenerating(false)
+  }
+
+  return { generate }
+}
+
+function getAccessToken(): string {
+  if (typeof window === 'undefined') return ''
+  return localStorage.getItem('accessToken') ?? ''
+}
 ```
 
 ---
 
-## CHECKLIST — Before Calling AI
+## THE WEBCONTAINER HOOK — Full Implementation
 
-```
-□ package.json written to WebContainer root
-□ next.config.js written (with COOP/COEP headers)
-□ tsconfig.json written
-□ postcss.config.js written
-□ tailwind.config.ts written
-□ app/globals.css written (with @tailwind directives)
-□ app/layout.tsx written (valid html/body structure)
-□ app/page.tsx written (shows loading placeholder)
-□ lib/utils.ts written
-□ npm install triggered (running in background)
-□ THEN call /api/generate SSE endpoint
-□ When AI writes app/page.tsx → call startDev()
-□ When server-ready fires → set iframe.src = url
+```typescript
+// apps/web/hooks/useWebContainer.ts
+'use client'
+
+import { WebContainer } from '@webcontainer/api'
+import { useEffect, useRef, useState } from 'react'
+
+type Status = 'idle' | 'booting' | 'installing' | 'running' | 'error'
+
+export function useWebContainer() {
+  const wc = useRef<WebContainer | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [status, setStatus]         = useState<Status>('idle')
+  const [logs, setLogs]             = useState<string[]>([])
+
+  const log = (msg: string) => {
+    console.log('[WC]', msg)
+    setLogs((prev) => [...prev.slice(-100), msg]) // keep last 100 logs
+  }
+
+  useEffect(() => {
+    setStatus('booting')
+    log('Booting WebContainer...')
+
+    WebContainer.boot()
+      .then((instance) => {
+        wc.current = instance
+        log('WebContainer ready.')
+        setStatus('idle')
+
+        instance.on('server-ready', (port, url) => {
+          log(`Server ready on port ${port}: ${url}`)
+          setPreviewUrl(url)
+          setStatus('running')
+        })
+      })
+      .catch((err) => {
+        log(`Boot failed: ${err.message}`)
+        setStatus('error')
+      })
+  }, [])
+
+  async function writeFile(path: string, content: string) {
+    if (!wc.current) {
+      log(`Cannot write ${path} — WebContainer not ready`)
+      return
+    }
+    const dir = path.includes('/') ? path.split('/').slice(0, -1).join('/') : ''
+    if (dir) {
+      await wc.current.fs.mkdir(dir, { recursive: true })
+    }
+    await wc.current.fs.writeFile(path, content)
+  }
+
+  async function install() {
+    if (!wc.current) return
+    log('Running npm install...')
+    setStatus('installing')
+
+    const proc = await wc.current.spawn('npm', ['install'])
+    proc.output.pipeTo(
+      new WritableStream({ write: (data) => log(data.trim()) })
+    )
+
+    const code = await proc.exit
+    if (code !== 0) {
+      log(`npm install failed with code ${code}`)
+      setStatus('error')
+      return
+    }
+    log('npm install complete.')
+  }
+
+  async function startDev() {
+    if (!wc.current) return
+    log('Starting next dev...')
+
+    const proc = await wc.current.spawn('npm', ['run', 'dev'])
+    proc.output.pipeTo(
+      new WritableStream({ write: (data) => log(data.trim()) })
+    )
+    // server-ready event fires → sets previewUrl automatically
+  }
+
+  return {
+    writeFile,
+    install,
+    startDev,
+    previewUrl,
+    status,
+    logs,
+  }
+}
 ```
 
 ---
 
-## COMMON ERRORS AND FIXES
+## AI SYSTEM PROMPT ADDITION — Prepend to every generation call
 
-| Error | Cause | Fix |
+```
+FRAMEWORK: Next.js 14 App Router. TypeScript. Tailwind CSS.
+
+ABSOLUTE RULES:
+1. This is Next.js. NEVER generate Vite config, vite.config.ts, or any Vite files.
+2. NEVER generate: vite.config.ts, index.html at root, src/main.tsx, src/App.tsx
+3. NEVER modify: package.json, next.config.js, tsconfig.json, postcss.config.js
+4. These config files are already planted and correct. Do not touch them.
+5. Only generate files inside: app/, components/, lib/, hooks/, public/
+6. app/page.tsx MUST use Next.js App Router syntax (no ReactDOM.render)
+7. All components use 'use client' directive if they use hooks or browser APIs
+8. Import styles from app/globals.css only — no other CSS files
+9. Use @/* path alias for all imports (e.g. import { cn } from '@/lib/utils')
+10. Output: SSE events only. data: {"type":"file","path":"...","content":"..."}
+```
+
+---
+
+## ERROR REFERENCE
+
+| Terminal Error | Cause | Fix |
 |---|---|---|
-| "Couldn't find pages or app directory" | `app/` not at root | Write to `app/page.tsx` not `apps/web/app/page.tsx` |
-| Blank white screen | CSS not loaded | Check `app/globals.css` has `@tailwind base` |
-| Tailwind classes not working | postcss missing | Make sure `postcss.config.js` exists |
-| npm install hangs | Version ranges like `^14` | Use exact versions like `14.2.5` |
-| "Cannot find module clsx" | Missing dependency | Add `clsx` to package.json dependencies |
-| COOP error in console | Missing headers | Add COOP/COEP to `next.config.js` |
-| WebContainer won't boot | Wrong page context | Must boot on HTTPS page with correct headers |
-| Preview stays loading | server-ready never fires | Check `next dev` is running and port 3000 is open |
+| `command not found: vite` | AI generated Vite project | Block AI from touching `package.json` |
+| `Couldn't find app directory` | Files at wrong path | Write to `app/page.tsx` not `apps/web/app/page.tsx` |
+| `npm install hangs` | Version ranges `^14` | Use exact versions `14.2.5` |
+| Blank white screen | CSS missing | Check `app/globals.css` has `@tailwind base` |
+| `Cannot find module clsx` | Missing dep | Already in boilerplate `package.json` |
+| COOP/COEP error | Missing headers | Already in boilerplate `next.config.js` |
+| `Module not found: ./globals.css` | Wrong import path | `app/layout.tsx` must import `'./globals.css'` |
+| `ReactDOM.render is deprecated` | Using React 17 API | Use App Router exports, not `ReactDOM.render` |
 
 ---
 
-*VIAN Boilerplate — Plant first. Generate second. Preview always works.*
+*Plant first. Generate second. Preview always works.*

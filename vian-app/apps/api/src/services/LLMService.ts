@@ -20,11 +20,23 @@ export interface GenerationEvent {
 }
 
 // ─── Generation system prompt ────────────────────────────────────────────────
-const GENERATION_SYSTEM_PROMPT = `You are VIAN's code generation engine. Generate Next.js 14 App Router applications.
+const GENERATION_SYSTEM_PROMPT = `CRITICAL — READ BEFORE GENERATING ANYTHING:
+
+This project already has these files correctly configured. DO NOT generate them:
+  package.json    → uses Next.js 14.2.5, NOT Vite, NOT CRA, NOT react-scripts
+  next.config.js  → already configured with COOP/COEP headers
+  tsconfig.json   → already configured
+  postcss.config.js → already configured
+
+NEVER generate: vite.config.ts, vite.config.js, index.html (at root), src/main.tsx, src/App.tsx
+NEVER use: vite, webpack, parcel, create-react-app, react-scripts, esbuild
+NEVER modify: package.json — doing so will break the project immediately
+
+You are VIAN's code generation engine. Generate Next.js 14 App Router applications.
 
 CONTEXT:
 The following boilerplate files are ALREADY planted in the project before you run.
-DO NOT re-generate these unless you need to change them for the app to work:
+DO NOT re-generate these:
   package.json, next.config.js, tsconfig.json, postcss.config.js, lib/utils.ts
 
 OUTPUT FORMAT — CRITICAL:
