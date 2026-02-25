@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import { MessageSquare, FolderOpen, Share2, Globe } from 'lucide-react'
+import { MessageSquare, FolderOpen, Share2, Globe, Check, Download } from 'lucide-react'
 import { useProjectStore } from '@/stores/projectStore'
 import { useGeneration } from '@/hooks/useGeneration'
 import { useWebContainer } from '@/hooks/useWebContainer'
+import { API_BASE } from '@/lib/constants'
 import FileExplorer from '@/components/studio/FileExplorer'
 import CodeEditor from '@/components/studio/CodeEditor'
 import PreviewPanel from '@/components/studio/PreviewPanel'
@@ -22,6 +23,47 @@ export default function StudioPage() {
   const { status, logs } = useWebContainer()
   const hasAutoStarted = useRef(false)
   const [leftTab, setLeftTab] = useState<'chat' | 'files'>('chat')
+  const [copied, setCopied] = useState(false)
+  const [exporting, setExporting] = useState(false)
+
+  const handleShare = useCallback(() => {
+    const url = previewUrl ?? window.location.href
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }, [previewUrl])
+
+  const handlePublish = useCallback(async () => {
+    if (exporting || Object.keys(files).length === 0) return
+    setExporting(true)
+    try {
+      const payload = {
+        projectName: projectId ?? 'vian-project',
+        files: Object.values(files).map((f) => ({
+          path: f.path,
+          content: f.content,
+          isDirectory: false,
+        })),
+      }
+      const res = await fetch(`${API_BASE}/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `${projectId ?? 'vian-project'}.zip`
+      link.click()
+      URL.revokeObjectURL(link.href)
+    } catch (err) {
+      console.error('[publish]', err)
+    } finally {
+      setExporting(false)
+    }
+  }, [exporting, files, projectId])
 
   useEffect(() => {
     if (urlPrompt && !hasAutoStarted.current) {
@@ -63,13 +105,22 @@ export default function StudioPage() {
               {fileCount} file{fileCount !== 1 ? 's' : ''}
             </span>
           )}
-          <button className="flex items-center gap-1.5 text-[11px] text-[#888] hover:text-white px-3 py-1.5 rounded-lg border border-[#2a2a2a] hover:border-[#3a3a3a] transition-colors">
-            <Share2 size={12} />
-            Share
+          <button
+            onClick={handleShare}
+            className="flex items-center gap-1.5 text-[11px] text-[#888] hover:text-white px-3 py-1.5 rounded-lg border border-[#2a2a2a] hover:border-[#3a3a3a] transition-colors"
+            title="Copy preview URL to clipboard"
+          >
+            {copied ? <Check size={12} className="text-green-400" /> : <Share2 size={12} />}
+            {copied ? 'Copied!' : 'Share'}
           </button>
-          <button className="flex items-center gap-1.5 text-[11px] text-white px-3 py-1.5 rounded-lg bg-accent hover:bg-accent-hover transition-colors font-medium">
-            <Globe size={12} />
-            Publish
+          <button
+            onClick={handlePublish}
+            disabled={exporting || fileCount === 0}
+            className="flex items-center gap-1.5 text-[11px] text-white px-3 py-1.5 rounded-lg bg-accent hover:bg-accent-hover transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Download project as ZIP"
+          >
+            {exporting ? <Globe size={12} className="animate-spin" /> : <Download size={12} />}
+            {exporting ? 'Zipping...' : 'Export'}
           </button>
           <div className="w-7 h-7 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[11px] text-[#888] font-semibold">
             V
