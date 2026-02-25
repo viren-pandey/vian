@@ -48,3 +48,29 @@ model BetaRequest {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model BlogPost {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  excerpt     String     @default("")
+  content     String     @db.Text
+  coverImage  String?
+  published   Boolean    @default(false)
+  publishedAt DateTime?
+  readTime    Int        @default(0)
+  tags        BlogTag[]  @relation("BlogPostTags")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("blog_posts")
+}
+
+model BlogTag {
+  id    String     @id @default(cuid())
+  name  String     @unique
+  slug  String     @unique
+  posts BlogPost[] @relation("BlogPostTags")
+
+  @@map("blog_tags")
+}
