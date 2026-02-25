@@ -4,7 +4,7 @@
 
 ## 🚀 Start Everything
 
-Run these in **two separate terminals** from the project root (`vian-app/`):
+Run these in **two separate terminals** from the project root:
 
 ### Terminal 1 — API Server (port 4000)
 ```powershell
@@ -20,29 +20,82 @@ pnpm --filter @vian/web dev
 
 ---
 
-## 🔗 App Links
+## 🔗 Web App Pages
 
 | Page | URL | Description |
 |---|---|---|
 | **Landing / Home** | http://localhost:3000 | Main page — type a prompt & generate |
-| **Studio** | http://localhost:3000/studio/[project-id] | Generated app IDE + preview |
-| **Request Access** | http://localhost:3000/request-access | Beta access request form |
 | **Login** | http://localhost:3000/login | User login |
-| **Admin Dashboard** | http://localhost:3000/admin | Manage beta requests + view key health |
+| **Register** | http://localhost:3000/register | Create account + request access |
+| **Request Access** | http://localhost:3000/request-access | Beta access request form (no password) |
+| **Studio** | http://localhost:3000/studio/[project-id] | Generated app IDE + live preview |
+| **Settings** | http://localhost:3000/settings | User account settings |
+| **Blog** | http://localhost:3000/blog | Public blog index |
+| **Blog Post** | http://localhost:3000/blog/[slug] | Individual blog post |
+| **Admin Panel** | http://localhost:3000/admin | Admin dashboard (beta requests + key health) |
+| **Admin Login** | http://localhost:3000/admin/login | Admin login page |
+| **Admin Blog** | http://localhost:3000/admin/blog | Manage all blog posts |
+| **New Blog Post** | http://localhost:3000/admin/blog/new | Create a new blog post |
+| **Edit Blog Post** | http://localhost:3000/admin/blog/[id]/edit | Edit an existing blog post |
 
 ---
 
 ## 🔗 API Endpoints
 
+### Health
 | Method | URL | Description |
 |---|---|---|
-| `GET` | http://localhost:4000/health | Health check |
-| `POST` | http://localhost:4000/api/generate | Stream file generation (SSE) |
-| `POST` | http://localhost:4000/api/auth/request-access | Submit beta request |
-| `POST` | http://localhost:4000/api/auth/login | Login |
-| `GET` | http://localhost:4000/api/admin/beta-requests | List all beta requests |
-| `PATCH` | http://localhost:4000/api/admin/beta-requests/:id | Approve/reject request |
-| `GET` | http://localhost:4000/api/admin/key-health | View API key status |
+| `GET` | http://localhost:4000/health | Health check — returns `{"status":"ok"}` |
+
+### Auth (`/api/auth`)
+| Method | URL | Description |
+|---|---|---|
+| `POST` | http://localhost:4000/api/auth/register | Create account + submit beta request |
+| `POST` | http://localhost:4000/api/auth/login | Login → returns JWT access token |
+| `GET` | http://localhost:4000/api/auth/me | Get current user (requires Bearer token) |
+| `POST` | http://localhost:4000/api/auth/request-access | Submit beta request (no password) |
+| `POST` | http://localhost:4000/api/auth/forgot-password | Send password reset email |
+| `POST` | http://localhost:4000/api/auth/change-password | Change password (requires Bearer token) |
+
+### Generation (`/api/generate`, `/api/edit`)
+| Method | URL | Description |
+|---|---|---|
+| `POST` | http://localhost:4000/api/generate | Stream app generation via SSE |
+| `POST` | http://localhost:4000/api/edit | Stream file edit via SSE |
+
+### Projects (`/api/projects`)
+| Method | URL | Description |
+|---|---|---|
+| `GET` | http://localhost:4000/api/projects | List all projects for current user |
+| `POST` | http://localhost:4000/api/projects | Create new project |
+| `GET` | http://localhost:4000/api/projects/:id | Get single project |
+| `DELETE` | http://localhost:4000/api/projects/:id | Delete project |
+| `POST` | http://localhost:4000/api/export | Export project as zip |
+
+### Admin (`/api/admin`)
+| Method | URL | Description |
+|---|---|---|
+| `GET` | http://localhost:4000/api/admin/keys | View all provider API key health |
+| `GET` | http://localhost:4000/api/admin/requests | List all beta access requests |
+| `GET` | http://localhost:4000/api/admin/users | List all users |
+| `PATCH` | http://localhost:4000/api/admin/approve/:id | Approve a beta request |
+| `PATCH` | http://localhost:4000/api/admin/reject/:id | Reject a beta request |
+| `PATCH` | http://localhost:4000/api/admin/revoke/:id | Revoke a user's access |
+
+### Blog (`/api/blog`)
+| Method | URL | Description |
+|---|---|---|
+| `GET` | http://localhost:4000/api/blog | List all published posts |
+| `GET` | http://localhost:4000/api/blog/latest | Get latest posts (query: `?limit=5`) |
+| `GET` | http://localhost:4000/api/blog/:slug | Get single post by slug |
+| `GET` | http://localhost:4000/api/blog/image/:filename | Serve uploaded image |
+| `GET` | http://localhost:4000/api/blog/admin/all | Admin: list all posts (published + drafts) |
+| `GET` | http://localhost:4000/api/blog/admin/:id | Admin: get single post by ID |
+| `POST` | http://localhost:4000/api/blog/admin | Admin: create new post |
+| `PUT` | http://localhost:4000/api/blog/admin/:id | Admin: update post |
+| `DELETE` | http://localhost:4000/api/blog/admin/:id | Admin: delete post |
+| `POST` | http://localhost:4000/api/blog/admin/cover | Admin: upload cover image |
+| `POST` | http://localhost:4000/api/blog/admin/image | Admin: upload inline image |
 
 ---
 
@@ -56,7 +109,7 @@ pnpm --filter @vian/web dev
 | `puter-gpt-4o` | GPT-4o | OpenAI via Puter.js, free |
 | `puter-claude-sonnet-4-5` | Claude 3.5 Sonnet | Anthropic via Puter.js, free |
 
-> Puter.js runs entirely in the browser. No API key needed. Include `<script src="https://js.puter.com/v2/">` — already wired in.
+> Puter.js runs entirely in the browser. No API key needed.
 
 ### Server-side providers (require keys in .env)
 | Model ID | Label | Provider | Cost |
@@ -64,7 +117,7 @@ pnpm --filter @vian/web dev
 | `gemini-2.0-flash` | Gemini 2.0 Flash | Google | Free (1500 req/day/key × 5 keys) |
 | `gemini-1.5-pro` | Gemini 1.5 Pro | Google | Free tier |
 | `llama-3.3-70b-versatile` | Llama 3.3 70B | Groq | Free |
-| `llama-3.1-8b-instant` | Llama 3.1 8B (Fast) | Groq | Free |
+| `llama-3.1-8b-instant` | Llama 3.1 8B Fast | Groq | Free |
 | `deepseek-chat` | DeepSeek V3 | DeepSeek | ~$0.07/M tokens |
 | `deepseek-reasoner` | DeepSeek R1 | DeepSeek | ~$0.55/M tokens |
 | `gpt-4o` | GPT-4o | OpenAI | $5/M tokens |
@@ -139,10 +192,24 @@ pnpm --filter @vian/prisma db push
 pnpm --filter @vian/prisma studio
 ```
 
-### Test generation via curl (PowerShell)
+### Test generation (PowerShell)
 ```powershell
 $body = '{"prompt":"counter app","model":"gemini-2.0-flash","projectId":"test"}'
 Invoke-WebRequest -Uri 'http://localhost:4000/api/generate' -Method POST -Body $body -ContentType 'application/json' -UseBasicParsing | Select-Object -ExpandProperty Content
+```
+
+### Test request-access (PowerShell)
+```powershell
+$body = '{"name":"Test User","email":"test@example.com","reason":"Testing"}'
+Invoke-WebRequest -Uri 'http://localhost:4000/api/auth/request-access' -Method POST -Body $body -ContentType 'application/json' -UseBasicParsing | Select-Object StatusCode, Content
+```
+
+### Git — push from repo root
+```powershell
+cd "C:\Users\VIREN PANDEY\Desktop\Vian"
+git add -A
+git commit -m "your message"
+git push origin main
 ```
 
 ---
@@ -152,18 +219,38 @@ Invoke-WebRequest -Uri 'http://localhost:4000/api/generate' -Method POST -Body $
 ```
 vian-app/
 ├── apps/
-│   ├── web/          → Next.js 14 frontend (port 3000)
-│   │   ├── app/      → Pages (page.tsx, studio/, admin/, etc.)
-│   │   ├── stores/   → Zustand state (projectStore.ts)
-│   │   └── lib/      → constants.ts, utils
-│   └── api/          → Express backend (port 4000)
+│   ├── web/                    → Next.js 14 frontend (port 3000)
+│   │   ├── app/
+│   │   │   ├── (auth)/         → login, register, request-access
+│   │   │   ├── (studio)/       → studio/[projectId]
+│   │   │   ├── (admin)/        → admin/, admin/blog, admin/blog/new, admin/blog/[id]/edit
+│   │   │   ├── (marketing)/    → blog/, blog/[slug]
+│   │   │   └── settings/
+│   │   ├── components/
+│   │   │   ├── auth/           → RequestAccessForm
+│   │   │   ├── admin/blog/     → BlogEditor, EditorToolbar, ImageUploadModal, PostSettings
+│   │   │   ├── marketing/      → BlogCard, Hero, Navbar, Footer
+│   │   │   ├── studio/         → ChatPanel, CodeEditor, FileExplorer, PreviewPanel, etc.
+│   │   │   └── ui/             → Button, Card, Input, Modal, Badge, Skeleton, Spinner
+│   │   ├── hooks/
+│   │   │   ├── useGeneration.ts   → boilerplate-first generation flow
+│   │   │   ├── useWebContainer.ts → WebContainer writeFile/install/startDev API
+│   │   │   └── useFileTree.ts
+│   │   ├── lib/
+│   │   │   ├── boilerplate.ts  → 9 mandatory files planted before AI generation
+│   │   │   ├── prompts.ts      → Puter.js system prompts (Next.js App Router)
+│   │   │   ├── api.ts          → fetch helpers
+│   │   │   └── constants.ts
+│   │   └── stores/             → appStore, authStore, projectStore (Zustand)
+│   └── api/                    → Express backend (port 4000)
 │       ├── src/
-│       │   ├── services/   → LLMService.ts, KeyManager.ts
-│       │   ├── routes/     → generate.ts, auth.ts, admin.ts
-│       │   └── middleware/ → accessGuard.ts
-│       └── .env            → All API keys go here
+│       │   ├── routes/         → generation, edit, projects, export, auth, admin, blog
+│       │   ├── services/       → LLMService, KeyManager, FileGenerator, FileValidator
+│       │   └── middleware/     → auth, accessGuard, errorHandler
+│       └── .env                → All API keys go here
 └── packages/
-    └── prisma/       → DB schema + migrations
+    ├── prisma/                 → schema.prisma (User, BetaRequest, Project, BlogPost, BlogTag)
+    └── shared-types/           → Shared TypeScript types
 ```
 
 ---
@@ -177,3 +264,21 @@ DB:       vian
 User:     postgres
 Password: virenn7
 ```
+
+---
+
+## ⚙️ Generation Architecture (madontay.md)
+
+The WebContainer generates **Next.js 14 App Router** apps — not Vite.
+
+**Flow:**
+1. Plant 9 boilerplate files (package.json, next.config.js, tsconfig, tailwind, globals.css, layout.tsx, page.tsx, lib/utils.ts) — `lib/boilerplate.ts`
+2. Fire `npm install` immediately (async — does NOT block)
+3. Stream AI-generated files via SSE → write each to WebContainer
+4. When `app/page.tsx` arrives → wait for install → run `npm run dev`
+5. `server-ready` event fires → preview URL shown in PreviewPanel
+
+**Protected files** (AI is blocked from overwriting):
+- `package.json`, `next.config.js`, `tsconfig.json`, `postcss.config.js`
+
+**Allowed AI output folders:** `app/`, `components/`, `lib/`, `hooks/`, `public/`
