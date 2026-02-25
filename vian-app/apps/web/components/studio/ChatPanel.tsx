@@ -15,9 +15,10 @@ interface Message {
 interface ChatPanelProps {
   onEdit: (instruction: string, onSuccess?: (editedPath: string) => void) => void
   onGenerate: (prompt: string) => void
+  terminalLogs?: string[]
 }
 
-export default function ChatPanel({ onEdit, onGenerate }: ChatPanelProps) {
+export default function ChatPanel({ onEdit, onGenerate, terminalLogs = [] }: ChatPanelProps) {
   const [value, setValue] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [showModelMenu, setShowModelMenu] = useState(false)
@@ -137,11 +138,16 @@ export default function ChatPanel({ onEdit, onGenerate }: ChatPanelProps) {
 
     if (hasFiles) {
       isEditMode.current = true
-      // Auto-inject error context when the user is asking to fix something
-      const errorCtx = lastRuntimeError.current || errorMessage || ''
-      const isFixRequest = /fix|error|broken|crash|bug|issue|doesn.t work|not work/i.test(trimmed)
+      // Collect error context: runtime JS errors + Next.js build errors from terminal
+      const runtimeErr = lastRuntimeError.current || errorMessage || ''
+      const buildErrors = terminalLogs
+        .filter(l => /error|failed|cannot find|module not found|SyntaxError|TypeError|unexpected/i.test(l))
+        .slice(-8)
+        .join('\n')
+      const errorCtx = [runtimeErr, buildErrors].filter(Boolean).join('\n')
+      const isFixRequest = /fix|error|broken|crash|bug|issue|doesn.t work|not work|white|blank|nothing/i.test(trimmed)
       const instruction = (isFixRequest && errorCtx)
-        ? `${trimmed}\n\nError context to fix:\n${errorCtx}`
+        ? `${trimmed}\n\nError context:\n${errorCtx}`
         : trimmed
       lastRuntimeError.current = ''
       onEdit(instruction, (editedPath) => { lastEditedFile.current = editedPath })
@@ -171,8 +177,8 @@ export default function ChatPanel({ onEdit, onGenerate }: ChatPanelProps) {
               <Bot size={18} className="text-accent" />
             </div>
             <div>
-              <p className="text-xs font-medium text-text-primary mb-1">VIAN</p>
-              <p className="text-[11px] text-text-muted leading-relaxed">
+              <p className="text-sm font-medium text-text-primary mb-1">VIAN</p>
+              <p className="text-[13px] text-text-muted leading-relaxed">
                 {hasFiles
                   ? 'Describe a change and I will update your app.'
                   : 'Describe the app you want to build and I will generate it.'}
@@ -196,10 +202,10 @@ export default function ChatPanel({ onEdit, onGenerate }: ChatPanelProps) {
             )}
             <div
               className={
-                'max-w-[85%] rounded-xl px-3 py-2 text-[11px] leading-relaxed font-ui ' +
+                'max-w-[85%] rounded-xl px-3 py-2 text-[13px] leading-relaxed font-ui ' +
                 (msg.role === 'user'
                   ? 'bg-accent/15 text-text-primary border border-accent/20'
-                  : 'bg-[#1a1a1a] text-text-muted border border-[#2a2a2a]')
+                  : 'bg-[#1a1a1a] text-[#ccc] border border-[#2a2a2a]')
               }
             >
               {msg.content}
@@ -234,7 +240,7 @@ export default function ChatPanel({ onEdit, onGenerate }: ChatPanelProps) {
           <button
             onClick={() => setShowModelMenu((v) => !v)}
             onBlur={() => setTimeout(() => setShowModelMenu(false), 120)}
-            className="flex items-center gap-1 text-[10px] text-text-muted hover:text-text-secondary transition-colors py-0.5 font-ui"
+            className="flex items-center gap-1 text-[12px] text-text-muted hover:text-text-secondary transition-colors py-0.5 font-ui"
           >
             <span>{currentModel.label}</span>
             <ChevronDown size={10} className="opacity-60" />
@@ -250,7 +256,7 @@ export default function ChatPanel({ onEdit, onGenerate }: ChatPanelProps) {
                     setShowModelMenu(false)
                   }}
                   className={
-                    'w-full text-left px-3 py-1.5 text-[10px] font-ui flex items-center justify-between hover:bg-[#222] transition-colors ' +
+                    'w-full text-left px-3 py-1.5 text-[12px] font-ui flex items-center justify-between hover:bg-[#222] transition-colors ' +
                     (model === m.id ? 'text-accent' : 'text-text-secondary')
                   }
                 >
@@ -275,7 +281,7 @@ export default function ChatPanel({ onEdit, onGenerate }: ChatPanelProps) {
             placeholder={hasFiles ? 'Describe a change...' : 'Describe your app...'}
             disabled={isGenerating}
             rows={1}
-            className="flex-1 bg-transparent resize-none outline-none text-[11px] text-text-primary placeholder-[#444] disabled:opacity-40 font-ui leading-5"
+            className="flex-1 bg-transparent resize-none outline-none text-[13px] text-text-primary placeholder-[#444] disabled:opacity-40 font-ui leading-5"
             style={{ maxHeight: '100px' }}
           />
           <button

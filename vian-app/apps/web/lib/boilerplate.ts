@@ -210,16 +210,20 @@ export default config`,
   }
 }
 
-@layer base {
-  * { @apply border-border box-sizing-border; }
-  body {
-    @apply bg-background text-foreground antialiased;
-    font-family: var(--font-sans);
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-  h1,h2,h3,h4,h5,h6 { @apply font-semibold tracking-tight; }
-  a { @apply text-inherit no-underline; }
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
 }
+
+h1, h2, h3, h4, h5, h6 { font-weight: 600; letter-spacing: -0.02em; }
+a { color: inherit; text-decoration: none; }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
