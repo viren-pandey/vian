@@ -151,7 +151,7 @@ export default function NewPostPage() {
             slug={slug}           onSlugChange={setSlug}
             excerpt={excerpt}     onExcerptChange={setExcerpt}
             tags={tags}           onTagsChange={setTags}
-            coverImage={coverImage} onCoverImageChange={setCoverImage}
+            coverImage={coverImage}  onCoverChange={setCoverImage}
             published={published}  onPublishedChange={setPublished}
             readTime={readTime}
           />

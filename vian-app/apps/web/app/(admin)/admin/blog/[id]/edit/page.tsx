@@ -172,7 +172,7 @@ export default function EditPostPage() {
             slug={slug}             onSlugChange={(v) => { setSlug(v); autoSave() }}
             excerpt={excerpt}       onExcerptChange={(v) => { setExcerpt(v); autoSave() }}
             tags={tags}             onTagsChange={(v) => { setTags(v); autoSave() }}
-            coverImage={coverImage}  onCoverImageChange={(v) => { setCoverImage(v); autoSave() }}
+            coverImage={coverImage}  onCoverChange={(v: string) => { setCoverImage(v); autoSave() }}
             published={published}   onPublishedChange={(v) => { setPublished(v); autoSave() }}
             readTime={readTime}
           />

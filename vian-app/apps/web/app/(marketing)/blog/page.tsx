@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
-import Navbar from '@/components/marketing/Navbar'
-import Footer from '@/components/marketing/Footer'
+import { Navbar } from '@/components/marketing/Navbar'
+import { Footer } from '@/components/marketing/Footer'
 import BlogCard from '@/components/marketing/BlogCard'
 
 export const metadata: Metadata = {
@@ -18,7 +18,7 @@ interface Post {
   coverImage:  string | null
   publishedAt: string | null
   readTime:    number
-  tags:        { name: string }[]
+  tags:        { name: string; slug?: string }[]
 }
 
 async function getPosts(): Promise<Post[]> {

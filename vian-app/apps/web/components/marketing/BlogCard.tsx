@@ -6,7 +6,7 @@ interface Post {
   coverImage?: string | null
   publishedAt: string | null
   readTime:    number
-  tags:        { name: string; slug: string }[]
+  tags:        { name: string; slug?: string }[]
 }
 
 export default function BlogCard({ post, apiBase = '' }: { post: Post; apiBase?: string }) {
@@ -17,7 +17,6 @@ export default function BlogCard({ post, apiBase = '' }: { post: Post; apiBase?:
                  rounded-xl overflow-hidden transition-colors"
     >
       {post.coverImage && (
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={`${apiBase}/uploads/blog/${post.coverImage}`}
           alt={post.title}

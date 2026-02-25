@@ -46,7 +46,7 @@ export default function EditorToolbar({ editor }: ToolbarProps) {
   }
 
   function insertLink() {
-    if (!linkUrl) return
+    if (!linkUrl || !editor) return
     editor.chain().focus().setLink({ href: linkUrl }).run()
     setLinkUrl('')
     setShowLinkInput(false)

@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import Navbar from '@/components/marketing/Navbar'
-import Footer from '@/components/marketing/Footer'
+import { Navbar } from '@/components/marketing/Navbar'
+import { Footer } from '@/components/marketing/Footer'
 
 const API = process.env.API_URL ?? 'http://localhost:4000'
 

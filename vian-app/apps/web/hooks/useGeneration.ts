@@ -104,8 +104,21 @@ export function useGeneration() {
       setIsGenerating(true)
       setErrorMessage(null)
 
-      const currentFileToEdit = activeFile ?? ''
-      const currentContent = activeFile ? (files[activeFile]?.content ?? '') : ''
+      // Prefer the main app component over config/package files that are first in the editor
+      const PREFERRED = ['src/App.tsx', 'src/app.tsx', 'src/App.jsx', 'src/main.tsx']
+      const isComponentFile = (p: string) =>
+        /\.(tsx|jsx)$/.test(p) &&
+        !['package.json', 'vite.config.ts', 'tsconfig.json', 'tailwind.config.js', 'postcss.config.js'].includes(p)
+
+      const smartFile =
+        PREFERRED.find((f) => files[f]) ??
+        Object.keys(files).find(isComponentFile) ??
+        (activeFile && isComponentFile(activeFile) ? activeFile : null) ??
+        activeFile ??
+        ''
+
+      const currentFileToEdit = smartFile
+      const currentContent = smartFile ? (files[smartFile]?.content ?? '') : ''
       let firstEditedPath = currentFileToEdit
 
       try {
@@ -129,6 +142,7 @@ export function useGeneration() {
         const decoder = new TextDecoder()
         let buffer = ''
         let firstFileSeen = false
+        const updatedFiles: Record<string, string> = {}
 
         const processLine = (line: string) => {
           if (!line.startsWith('data: ')) return
@@ -140,6 +154,7 @@ export function useGeneration() {
           if (event.type === 'file') {
             const { path, content, language } = event as { path: string; content: string; language?: string }
             setFile(path, { path, content, language: language ?? 'typescript', status: 'complete' })
+            updatedFiles[path] = content
             if (!firstFileSeen) {
               firstFileSeen = true
               firstEditedPath = path
@@ -157,6 +172,19 @@ export function useGeneration() {
           const lines = buffer.split('\n')
           buffer = lines.pop() ?? ''
           for (const line of lines) processLine(line)
+        }
+
+        // Reboot preview with merged updated files so the live preview reflects the edit
+        if (bootWebContainer.current && Object.keys(updatedFiles).length > 0) {
+          // Merge: start from current store files, overlay what the LLM changed
+          const allCurrent: Record<string, string> = {}
+          for (const [p, f] of Object.entries(files as Record<string, { content: string }>)) {
+            if (f && typeof f === 'object' && typeof f.content === 'string') {
+              allCurrent[p] = f.content
+            }
+          }
+          Object.assign(allCurrent, updatedFiles)
+          bootWebContainer.current(allCurrent).catch(console.error)
         }
 
         onSuccess?.(firstEditedPath)
