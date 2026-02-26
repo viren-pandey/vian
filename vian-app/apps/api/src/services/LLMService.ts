@@ -243,17 +243,47 @@ export class LLMService {
 
   /** Stream files for a new generation */
   async *generateFiles(prompt: string, model: string): AsyncGenerator<GenerationEvent> {
-    if (model.startsWith('claude')) {
-      yield* this.streamAnthropic(GENERATION_SYSTEM_PROMPT, prompt)
-    } else if (model.startsWith('llama') || model.startsWith('mixtral') || model.startsWith('gemma') || model === 'groq') {
-      yield* this.streamGroq(GENERATION_SYSTEM_PROMPT, prompt, model)
-    } else if (model.startsWith('gemini')) {
-      yield* this.streamGemini(GENERATION_SYSTEM_PROMPT, prompt, model)
-    } else if (model.startsWith('deepseek')) {
-      yield* this.streamDeepSeek(GENERATION_SYSTEM_PROMPT, prompt, model)
-    } else {
-      yield* this.streamOpenAI(GENERATION_SYSTEM_PROMPT, prompt, model)
+    // Fallback model hierarchy (cheap → expensive)
+    const modelFallbacks: Record<string, string[]> = {
+      'groq': ['llama-3.3-70b-versatile', 'gemini-2.0-flash-exp', 'deepseek-chat', 'gpt-4o'],
+      'llama-3.3-70b-versatile': ['gemini-2.0-flash-exp', 'deepseek-chat', 'gpt-4o'],
+      'gemini-2.0-flash-exp': ['deepseek-chat', 'llama-3.3-70b-versatile', 'gpt-4o'],
+      'deepseek-chat': ['llama-3.3-70b-versatile', 'gemini-2.0-flash-exp', 'gpt-4o'],
     }
+
+    const modelsToTry = modelFallbacks[model] || [model]
+    let lastError: any = null
+
+    for (const tryModel of modelsToTry) {
+      try {
+        console.log(`[LLMService] Trying model: ${tryModel}`)
+        
+        if (tryModel.startsWith('claude')) {
+          yield* this.streamAnthropic(GENERATION_SYSTEM_PROMPT, prompt)
+          return // Success
+        } else if (tryModel.startsWith('llama') || tryModel.startsWith('mixtral') || tryModel.startsWith('gemma') || tryModel === 'groq') {
+          yield* this.streamGroq(GENERATION_SYSTEM_PROMPT, prompt, tryModel)
+          return // Success
+        } else if (tryModel.startsWith('gemini')) {
+          yield* this.streamGemini(GENERATION_SYSTEM_PROMPT, prompt, tryModel)
+          return // Success
+        } else if (tryModel.startsWith('deepseek')) {
+          yield* this.streamDeepSeek(GENERATION_SYSTEM_PROMPT, prompt, tryModel)
+          return // Success
+        } else {
+          yield* this.streamOpenAI(GENERATION_SYSTEM_PROMPT, prompt, tryModel)
+          return // Success
+        }
+      } catch (err: any) {
+        lastError = err
+        console.warn(`[LLMService] Model ${tryModel} failed:`, err.message)
+        // Continue to next fallback
+      }
+    }
+
+    // All models failed
+    console.error('[LLMService] All models failed')
+    throw lastError || new Error('All models failed')
   }
 
   /** Stream files for an edit operation */

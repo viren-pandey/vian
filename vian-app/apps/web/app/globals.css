@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,6 +17,10 @@
   --green:         #22c55e;
   --red:           #ef4444;
   --yellow:        #f59e0b;
+  
+  /* Typography */
+  --font-ui:       'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:     'JetBrains Mono', 'Menlo', monospace;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -24,12 +28,26 @@
 html, body {
   background-color: var(--bg-base);
   color: var(--text-primary);
-  font-family: 'Geist', -apple-system, sans-serif;
+  font-family: var(--font-ui);
   font-size: 14px;
   min-height: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Typography utility classes */
+.font-ui { font-family: var(--font-ui); }
+.font-mono { font-family: var(--font-mono); }
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-ui);
+  font-weight: 600;
+}
+
+.text-heading { @apply text-lg font-semibold; }
+.text-body { @apply text-sm; }
+.text-code { font-family: var(--font-mono); font-size: 13px; line-height: 20px; }
 
 /* Scrollbar */
 ::-webkit-scrollbar        { width: 4px; height: 4px; }
@@ -55,7 +73,7 @@ html, body {
 .tiptap {
   min-height: 60vh;
   outline: none;
-  font-family: 'Geist', sans-serif;
+  font-family: var(--font-ui);
   font-size: 16px;
   line-height: 1.8;
   color: #d4d4d4;
@@ -80,7 +98,7 @@ html, body {
   border: 1px solid #262626;
   border-radius: 4px;
   padding: 2px 6px;
-  font-family: 'Geist Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   color: #a78bfa;
 }
@@ -118,3 +136,47 @@ html, body {
   height: 0;
 }
 .tiptap .selectedNode { outline: 2px solid #3b82f6; border-radius: 4px; }
+
+/* ─── VIAN Robot Animations ───────────────────────────────────────────── */
+
+/* Blinking cursor */
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+/* Robot floating up and down */
+@keyframes robot-float {
+  0%, 100% { transform: translateY(0px);   }
+  50%      { transform: translateY(-4px);  }
+}
+
+/* Robot eye blink */
+@keyframes eye-blink {
+  0%, 90%, 100% { transform: scaleY(1);    }
+  95%           { transform: scaleY(0.1); }
+}
+
+/* Antenna pulse */
+@keyframes antenna-pulse {
+  0%, 100% { opacity: 1; transform: scale(1);    }
+  50%      { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* Three dot bounce (writing indicator) */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0);    opacity: 0.4; }
+  50%      { transform: translateY(-3px); opacity: 1;   }
+}
+
+/* File fade in when a new file starts */
+@keyframes file-slide-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+
+/* Code line appear */
+@keyframes line-appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

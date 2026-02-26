@@ -70,6 +70,7 @@ export function useGeneration() {
     setIsGenerating,
     setProjectId,
     setErrorMessage,
+    setGenerationStatus,
     reset,
   } = useProjectStore()
 
@@ -85,11 +86,13 @@ export function useGeneration() {
     reset()
     setIsGenerating(true)
     setErrorMessage(null)
+    setGenerationStatus('Thinking…')
 
     const localFiles: Record<string, string> = {}
 
     try {
       // 1 -- Plant boilerplate
+      setGenerationStatus('Setting up project structure…')
       for (const file of BOILERPLATE_FILES) {
         await writeFile(file.path, file.content)
         setFile(file.path, {
@@ -102,59 +105,64 @@ export function useGeneration() {
       }
       setActiveFile('app/page.tsx')
 
-      // 2 -- Stream AI files
-      const res = await fetch(`${API_BASE}/generate`, {
+      // 2 -- Call new zero-cost code generator
+      setGenerationStatus('Generating code with AI...')
+      const res = await fetch(`${API_BASE}/codegen`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ prompt, model }),
+        body:    JSON.stringify({ prompt }),
       })
-      if (!res.ok || !res.body) {
+      
+      if (!res.ok) {
         throw new Error((await res.text()) || `HTTP ${res.status}`)
       }
 
-      const reader  = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
+      const data = await res.json()
 
-      const processLine = async (line: string) => {
-        if (!line.startsWith('data: ')) return
-        const raw = line.slice(6).trim()
-        if (!raw) return
-        let event: Record<string, unknown>
-        try { event = JSON.parse(raw) } catch { return }
-
-        if (event.type === 'meta' && event.projectId) {
-          setProjectId(event.projectId as string)
-
-        } else if (event.type === 'file') {
-          const { path, content, language } = event as { path: string; content: string; language?: string }
-
-          // Hard block -- AI must never touch config files
-          if (PROTECTED_FILES.has(path)) {
-            console.warn(`[VIAN] Blocked AI from overwriting: ${path}`)
-            return
-          }
-
-          setFile(path, { path, content, language: language ?? 'typescript', status: 'complete' })
-          setActiveFile(path)
-          localFiles[path] = content
-          await writeFile(path, content)
-
-        } else if (event.type === 'error') {
-          throw new Error((event.message as string) ?? 'Generation failed')
+      // Handle "refreshing keys" response
+      if (data.isRefreshing) {
+        setGenerationStatus(data.message || 'Please wait... processing your request')
+        // Wait a bit and retry
+        await new Promise(resolve => setTimeout(resolve, 3000))
+        const retryRes = await fetch(`${API_BASE}/codegen`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ prompt }),
+        })
+        const retryData = await retryRes.json()
+        if (retryData.isRefreshing) {
+          throw new Error(retryData.message || 'Service is refreshing, please try again')
         }
+        Object.assign(data, retryData)
       }
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const parts = buffer.split('\n')
-        buffer = parts.pop() ?? ''
-        for (const line of parts) { await processLine(line) }
+      if (!data.success || !data.files || data.files.length === 0) {
+        throw new Error('No code generated')
       }
 
-      // 3 -- Re-enforce correct config files (Vite blocker)
+      // 3 -- Write generated files
+      for (const file of data.files) {
+        const { path, content } = file
+
+        // Hard block -- AI must never touch config files
+        if (PROTECTED_FILES.has(path)) {
+          console.warn(`[VIAN] Blocked AI from overwriting: ${path}`)
+          continue
+        }
+
+        setGenerationStatus(`Writing ${path}…`)
+        const language = path.endsWith('.tsx') || path.endsWith('.ts') ? 'typescript' :
+                        path.endsWith('.jsx') || path.endsWith('.js') ? 'javascript' :
+                        path.endsWith('.css') ? 'css' : 'plaintext'
+        
+        setFile(path, { path, content, language, status: 'complete' })
+        setActiveFile(path)
+        localFiles[path] = content
+        await writeFile(path, content)
+      }
+
+      // 4 -- Re-enforce correct config files (Vite blocker)
+      setGenerationStatus('Enforcing config files…')
       await writeFile('package.json', CORRECT_PACKAGE_JSON)
       await writeFile('next.config.js', CORRECT_NEXT_CONFIG)
       console.log('[VIAN] Config files enforced.')
@@ -162,24 +170,35 @@ export function useGeneration() {
       // Focus main page in editor
       const mainFile = localFiles['app/page.tsx'] ? 'app/page.tsx'
         : localFiles['pages/index.tsx'] ? 'pages/index.tsx'
-        : null
+        : Object.keys(localFiles).find(f => f.endsWith('.tsx') || f.endsWith('.jsx'))
       if (mainFile) setActiveFile(mainFile)
 
-      // 4 -- Install + boot (awaited install, then dev server)
+      // 5 -- Install + boot (awaited install, then dev server)
+      setGenerationStatus('Installing dependencies…')
       setIsGenerating(false)
+      setGenerationStatus(null)
       installAndBoot() // don't await -- server-ready event handles preview
 
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Generation failed'
       console.error('[useGeneration] generate error:', err)
-      setErrorMessage(msg)
+      
+      // Show friendly message for quota errors
+      if (msg.includes('429') || msg.includes('quota') || msg.includes('refreshing')) {
+        setErrorMessage('⏳ Please wait... API keys refreshing. Try again in a moment.')
+      } else {
+        setErrorMessage(msg)
+      }
+      
+      setGenerationStatus(null)
       setIsGenerating(false)
     }
-  }, [model, reset, setFile, setActiveFile, setIsGenerating, setProjectId, setErrorMessage, writeFile, installAndBoot])
+  }, [model, reset, setFile, setActiveFile, setIsGenerating, setProjectId, setErrorMessage, setGenerationStatus, writeFile, installAndBoot])
 
   const editFile = useCallback(async (instruction: string, onSuccess?: (path: string) => void) => {
     setIsGenerating(true)
     setErrorMessage(null)
+    setGenerationStatus('Analysing your code…')
 
     const PREFERRED = ['app/page.tsx', 'pages/index.tsx', 'app/page.jsx']
     const isComponent = (p: string) =>
@@ -197,51 +216,70 @@ export function useGeneration() {
     let firstEditedPath  = smartFile
 
     try {
-      const res = await fetch(`${API_BASE}/edit`, {
+      // Use codegen endpoint with edit prompt
+      const editPrompt = `Edit this file: ${smartFile}
+
+Current code:
+\`\`\`
+${currentContent}
+\`\`\`
+
+Instruction: ${instruction}
+
+Return the updated file with the changes applied. Keep the same file name.`
+
+      setGenerationStatus('Analyzing code...')
+      const res = await fetch(`${API_BASE}/codegen`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          fileToEdit: smartFile,
-          instruction,
-          model,
-          currentContent,
-          // Send ALL current files so AI has full context to fix cross-file errors
-          allFiles: Object.fromEntries(
-            Object.entries(files).map(([path, node]) => [path, node.content])
-          ),
-        }),
+        body:    JSON.stringify({ prompt: editPrompt }),
       })
-      if (!res.ok || !res.body) throw new Error((await res.text()) || `HTTP ${res.status}`)
-
-      const reader  = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer    = ''
-      let firstSeen = false
-
-      const processLine = async (line: string) => {
-        if (!line.startsWith('data: ')) return
-        const raw = line.slice(6).trim()
-        if (!raw) return
-        let event: Record<string, unknown>
-        try { event = JSON.parse(raw) } catch { return }
-
-        if (event.type === 'file') {
-          const { path, content, language } = event as { path: string; content: string; language?: string }
-          setFile(path, { path, content, language: language ?? 'typescript', status: 'complete' })
-          if (!firstSeen) { firstSeen = true; firstEditedPath = path; setActiveFile(path) }
-          await writeFileRef.current(path, content)
-        } else if (event.type === 'error') {
-          throw new Error((event.message as string) ?? 'Edit failed')
-        }
+      
+      if (!res.ok) {
+        throw new Error((await res.text()) || `HTTP ${res.status}`)
       }
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const parts = buffer.split('\n')
-        buffer = parts.pop() ?? ''
-        for (const line of parts) { await processLine(line) }
+      const data = await res.json()
+
+      // Handle "refreshing keys" response
+      if (data.isRefreshing) {
+        setGenerationStatus(data.message || 'Please wait... processing your request')
+        await new Promise(resolve => setTimeout(resolve, 3000))
+        const retryRes = await fetch(`${API_BASE}/codegen`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ prompt: editPrompt }),
+        })
+        const retryData = await retryRes.json()
+        if (retryData.isRefreshing) {
+          throw new Error(retryData.message || 'Service is refreshing, please try again')
+        }
+        Object.assign(data, retryData)
+      }
+
+      if (!data.success || !data.files || data.files.length === 0) {
+        throw new Error('No changes generated')
+      }
+
+      // Write edited files
+      let firstSeen = false
+      for (const file of data.files) {
+        const { path, content } = file
+        setGenerationStatus(`Rewriting ${path}…`)
+        
+        const language = path.endsWith('.tsx') || path.endsWith('.ts') ? 'typescript' :
+                        path.endsWith('.jsx') || path.endsWith('.js') ? 'javascript' :
+                        path.endsWith('.css') ? 'css' : 'plaintext'
+        
+        setFile(path, { path, content, language, status: 'complete' })
+        
+        if (!firstSeen) { 
+          firstSeen = true
+          firstEditedPath = path
+          setActiveFile(path)
+        }
+        
+        await writeFileRef.current(path, content)
       }
 
       onSuccess?.(firstEditedPath)
@@ -249,11 +287,18 @@ export function useGeneration() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Edit failed'
       console.error('[useGeneration] editFile error:', err)
-      setErrorMessage(msg)
+      
+      // Show friendly message for quota errors
+      if (msg.includes('429') || msg.includes('quota') || msg.includes('refreshing')) {
+        setErrorMessage('⏳ Please wait... API keys refreshing. Try again in a moment.')
+      } else {
+        setErrorMessage(msg)
+      }
     } finally {
+      setGenerationStatus(null)
       setIsGenerating(false)
     }
-  }, [activeFile, files, model, setFile, setActiveFile, setIsGenerating, setErrorMessage, writeFile])
+  }, [activeFile, files, model, setFile, setActiveFile, setIsGenerating, setErrorMessage, setGenerationStatus, writeFile])
 
   return { generate, editFile }
 }

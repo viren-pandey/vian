@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { Terminal } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ChevronDown, ChevronUp, Plus } from 'lucide-react'
 
 type ContainerStatus = 'idle' | 'booting' | 'installing' | 'running' | 'error'
 
@@ -19,6 +19,7 @@ const STATUS_COLOR: Record<ContainerStatus, string> = {
 }
 
 export default function TerminalPanel({ logs, status }: TerminalPanelProps) {
+  const [collapsed, setCollapsed] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -26,50 +27,80 @@ export default function TerminalPanel({ logs, status }: TerminalPanelProps) {
   }, [logs])
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0a]">
-      {/* Tab bar — matches Bolt style */}
-      <div className="flex items-center h-8 px-3 border-b border-[#1a1a1a] bg-[#0d0d0d] flex-shrink-0 gap-3">
-        <button className="flex items-center gap-1.5 text-[10px] text-[#f0f0f0] border-b border-[#3b82f6] pb-px -mb-px px-0.5">
-          <Terminal size={10} />
-          Terminal
+    <div 
+      className="flex flex-col bg-[#0a0a0a] border-t border-[#1a1a1a] transition-all duration-200"
+      style={{ height: collapsed ? '36px' : '160px' }}
+    >
+      {/* Tab bar with collapse */}
+      <div className="flex items-center h-9 px-3 flex-shrink-0 gap-2">
+        {/* Tabs */}
+        <button className="flex items-center gap-1.5 text-[11px] text-white font-mono">
+          ⚡ VIAN
         </button>
-        <div className="ml-auto flex items-center gap-1.5">
-          {status === 'running' && (
-            <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse flex-shrink-0" />
-          )}
-          {status === 'booting' || status === 'installing' ? (
-            <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b] animate-pulse flex-shrink-0" />
-          ) : null}
-          <span className={`text-[10px] font-mono ${STATUS_COLOR[status]}`}>{status}</span>
-        </div>
+        <span className="text-[#333]">·</span>
+        <button className="flex items-center gap-1.5 text-[11px] text-[#666] hover:text-white font-mono transition-colors">
+          Publish Output
+        </button>
+        <span className="text-[#333]">·</span>
+        <button className="flex items-center gap-1.5 text-[11px] text-[#666] hover:text-white font-mono transition-colors">
+          &gt;_ Terminal
+        </button>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* npm ready pill */}
+        {status === 'running' && (
+          <div className="bg-[#166534] border border-[#16a34a] text-[#22c55e] text-[11px] font-mono px-2 py-0.5 rounded flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
+            npm ready
+          </div>
+        )}
+
+        {/* Add tab button */}
+        <button className="text-[#555] hover:text-white transition-colors">
+          <Plus size={12} />
+        </button>
+
+        {/* Collapse/Expand */}
+        <button 
+          onClick={() => setCollapsed(!collapsed)}
+          className="text-[#555] hover:text-white transition-colors"
+        >
+          {collapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
       </div>
 
       {/* Log output */}
-      <div className="flex-1 overflow-y-auto px-4 py-2 font-mono text-[11px] space-y-0.5">
-        {logs.length === 0 ? (
-          <div className="text-[#2a2a2a] select-none mt-1">Waiting for generation…</div>
-        ) : (
-          logs.map((line, i) => (
-            <div
-              key={i}
-              className={
-                line.startsWith('✗')
-                  ? 'text-[#ef4444]'
-                  : line.startsWith('✓')
-                  ? 'text-[#22c55e]'
-                  : line.startsWith('>')
-                  ? 'text-[#3b82f6]'
-                  : line === '~/project'
-                  ? 'text-[#22c55e] font-semibold'
-                  : 'text-[#666]'
-              }
-            >
-              {line}
-            </div>
-          ))
-        )}
-        <div ref={bottomRef} />
-      </div>
+      {!collapsed && (
+        <div className="flex-1 overflow-y-auto px-4 py-2 font-mono text-[11px] space-y-0 leading-[1.65]">
+          {logs.length === 0 ? (
+            <div className="text-[#2a2a2a] select-none mt-1">Waiting for generation…</div>
+          ) : (
+            logs.map((line, i) => (
+              <div
+                key={i}
+                className={
+                  line.startsWith('✗') || line.toLowerCase().includes('error')
+                    ? 'text-[#ef4444]'
+                    : line.startsWith('✓') || line.toLowerCase().includes('ready')
+                    ? 'text-[#22c55e]'
+                    : line.startsWith('>') || line.toLowerCase().includes('npm run')
+                    ? 'text-[#3b82f6]'
+                    : line === '~/project'
+                    ? 'text-[#22c55e] font-semibold'
+                    : line.toLowerCase().includes('warning')
+                    ? 'text-[#f59e0b]'
+                    : 'text-[#666]'
+                }
+              >
+                {line}
+              </div>
+            ))
+          )}
+          <div ref={bottomRef} />
+        </div>
+      )}
     </div>
   )
 }

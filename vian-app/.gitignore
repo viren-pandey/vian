@@ -33,3 +33,7 @@ packages/prisma/dev.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Documentation — ignore all .md files except README.md
+*.md
+!README.md

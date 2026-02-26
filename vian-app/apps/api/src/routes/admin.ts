@@ -145,3 +145,27 @@ adminRouter.patch('/revoke/:id', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Database error' })
   }
 })
+
+// POST /api/admin/impersonate/:userId — Generate token to impersonate user
+adminRouter.post('/impersonate/:userId', async (req: Request, res: Response) => {
+  const { userId } = req.params
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, email: true, role: true },
+    })
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+    // Generate a JWT for this user (same as login)
+    const jwt = require('jsonwebtoken')
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET ?? 'fallback-secret',
+      { expiresIn: '7d' }
+    )
+    res.json({ token, user })
+  } catch (err) {
+    res.status(500).json({ error: 'Database error' })
+  }
+})

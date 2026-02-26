@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import { MessageSquare, FolderOpen, Share2, Globe, Check, Download } from 'lucide-react'
+import { 
+  Eye, Code2, Database, Settings, 
+  Share2, Download, Check, MessageSquare, FileCode2, MonitorPlay
+} from 'lucide-react'
 import { useProjectStore } from '@/stores/projectStore'
 import { useGeneration } from '@/hooks/useGeneration'
 import { useWebContainer } from '@/hooks/useWebContainer'
@@ -12,7 +15,11 @@ import CodeEditor from '@/components/studio/CodeEditor'
 import PreviewPanel from '@/components/studio/PreviewPanel'
 import ChatPanel from '@/components/studio/ChatPanel'
 import StatusBar from '@/components/studio/StatusBar'
-import TerminalPanel from '@/components/studio/TerminalPanel'
+import DatabaseViewer from '@/components/studio/DatabaseViewer'
+import SettingsPanel from '@/components/studio/SettingsPanel'
+
+type TabType = 'preview' | 'code' | 'data' | 'settings'
+type CodePanelType = 'chat' | 'editor' | 'preview'
 
 export default function StudioPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -22,7 +29,8 @@ export default function StudioPage() {
   const { generate, editFile } = useGeneration()
   const { status, logs } = useWebContainer()
   const hasAutoStarted = useRef(false)
-  const [leftTab, setLeftTab] = useState<'chat' | 'files'>('chat')
+  const [activeTab, setActiveTab] = useState<TabType>('preview')
+  const [activeCodePanel, setActiveCodePanel] = useState<CodePanelType>('chat')
   const [copied, setCopied] = useState(false)
   const [exporting, setExporting] = useState(false)
 
@@ -77,130 +85,164 @@ export default function StudioPage() {
   const fileCount = Object.keys(files).length
 
   return (
-    <div className="h-screen flex flex-col bg-[#0d0d0d] overflow-hidden">
+    <div className="h-screen flex flex-col bg-[#0d0d0d] overflow-hidden font-ui">
 
-      {/* ── Navbar (h-14, Bolt-style big) ──────────────────────────────────── */}
-      <header className="flex-shrink-0 h-14 flex items-center justify-between px-5 border-b border-[#1f1f1f] bg-[#111] select-none">
-        {/* Left: logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 bg-accent rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-sm font-bold leading-none">◆</span>
-          </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-sm font-semibold text-white tracking-tight">VIAN Studio</span>
-            <span className="text-[10px] text-[#555]">by Viren Pandeyy</span>
-          </div>
-          {isGenerating && (
-            <div className="flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-full bg-accent/10 border border-accent/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-              <span className="text-[11px] text-accent font-medium">Generating…</span>
-            </div>
-          )}
+      {/* ── Toolbar ───────────────────────────────────────────────────────── */}
+      <header className="h-12 flex items-center justify-between px-3 md:px-4 border-b border-[#1a1a1a] bg-[#0d0d0d] flex-shrink-0">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+          <span className="text-[#3b82f6] font-semibold text-base">◆ VIAN</span>
+          <span className="hidden sm:inline text-xs text-[#2a2a2a]">|</span>
+          <span className="text-xs md:text-sm text-[#888] font-medium truncate">{projectId}</span>
         </div>
 
-        {/* Right: actions */}
-        <div className="flex items-center gap-2">
-          {fileCount > 0 && (
-            <span className="text-[10px] text-[#555] mr-2">
-              {fileCount} file{fileCount !== 1 ? 's' : ''}
-            </span>
-          )}
+        <div className="flex items-center gap-1.5 md:gap-2">
           <button
             onClick={handleShare}
-            className="flex items-center gap-1.5 text-[11px] text-[#888] hover:text-white px-3 py-1.5 rounded-lg border border-[#2a2a2a] hover:border-[#3a3a3a] transition-colors"
-            title="Copy preview URL to clipboard"
+            className="flex items-center gap-1.5 md:gap-2 bg-[#141414] hover:bg-[#1a1a1a] border border-[#1f1f1f] text-[#f0f0f0] text-xs font-medium px-2 md:px-3 py-1.5 rounded-lg transition-colors"
           >
-            {copied ? <Check size={12} className="text-green-400" /> : <Share2 size={12} />}
-            {copied ? 'Copied!' : 'Share'}
+            {copied ? <Check size={14} /> : <Share2 size={14} />}
+            <span className="hidden sm:inline">{copied ? 'Copied' : 'Share'}</span>
           </button>
           <button
             onClick={handlePublish}
             disabled={exporting || fileCount === 0}
-            className="flex items-center gap-1.5 text-[11px] text-white px-3 py-1.5 rounded-lg bg-accent hover:bg-accent-hover transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Download project as ZIP"
+            className="flex items-center gap-1.5 md:gap-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white text-xs font-medium px-2 md:px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {exporting ? <Globe size={12} className="animate-spin" /> : <Download size={12} />}
-            {exporting ? 'Zipping...' : 'Export'}
+            <Download size={14} />
+            <span className="hidden sm:inline">{exporting ? 'Exporting...' : 'Export'}</span>
           </button>
-          <div className="w-7 h-7 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[11px] text-[#888] font-semibold">
-            V
-          </div>
         </div>
       </header>
 
-      {/* ── Main ───────────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* ── Tab Bar ────────────────────────────────────────────────────────── */}
+      <nav className="h-10 flex items-center px-2 md:px-4 bg-[#111] border-b border-[#1a1a1a] flex-shrink-0 gap-0.5 md:gap-1 overflow-x-auto">
+        {[
+          { id: 'preview' as const, label: 'Preview', icon: Eye },
+          { id: 'code' as const, label: 'Code', icon: Code2 },
+          { id: 'data' as const, label: 'Data', icon: Database },
+          { id: 'settings' as const, label: 'Settings', icon: Settings },
+        ].map((tab) => {
+          const Icon = tab.icon
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'bg-[#1a1a1a] text-[#f0f0f0] border border-[#2a2a2a]'
+                  : 'text-[#888] hover:text-[#f0f0f0] hover:bg-[#141414]'
+              }`}
+            >
+              <Icon size={14} />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          )
+        })}
+      </nav>
+      {/* ── Main Content Area ──────────────────────────────────────────────── */}
+      <main className="flex-1 overflow-hidden">
 
-        {/* ── Left panel: Chat + Files tabs (w-72) ─────────────────────────── */}
-        <aside className="w-72 flex-shrink-0 flex flex-col border-r border-[#1f1f1f] bg-[#111]">
-          {/* Tab bar */}
-          <div className="flex h-9 border-b border-[#1f1f1f] flex-shrink-0">
-            <button
-              onClick={() => setLeftTab('chat')}
-              className={`flex-1 flex items-center justify-center gap-1.5 text-[12px] font-medium transition-colors ${
-                leftTab === 'chat'
-                  ? 'text-white border-b border-accent -mb-px'
-                  : 'text-[#555] hover:text-[#888]'
-              }`}
-            >
-              <MessageSquare size={12} />
-              Chat
-            </button>
-            <button
-              onClick={() => setLeftTab('files')}
-              className={`flex-1 flex items-center justify-center gap-1.5 text-[12px] font-medium transition-colors ${
-                leftTab === 'files'
-                  ? 'text-white border-b border-accent -mb-px'
-                  : 'text-[#555] hover:text-[#888]'
-              }`}
-            >
-              <FolderOpen size={12} />
-              Files
-              {fileCount > 0 && (
-                <span className="text-[10px] bg-[#2a2a2a] text-[#666] px-1 rounded">{fileCount}</span>
-              )}
-            </button>
+        {/* PREVIEW MODE - Fullscreen preview */}
+        {activeTab === 'preview' && (
+          <div className="h-full">
+            <PreviewPanel url={previewUrl} status={status} />
           </div>
+        )}
 
-          {/* Tab content */}
-          {leftTab === 'chat' ? (
-            <ChatPanel onGenerate={generate} onEdit={editFile} terminalLogs={logs} />
-          ) : (
-            <div className="flex-1 overflow-y-auto">
-              <FileExplorer />
+        {/* CODE MODE - Split layout with chat, editor, preview */}
+        {activeTab === 'code' && (
+          <div className="h-full flex flex-col">
+            {/* Desktop: 3-panel layout */}
+            <div className="hidden lg:flex h-full gap-0">
+              {/* Left: Chat + Files (20%) */}
+              <aside className="w-[20%] min-w-[280px] max-w-[400px] flex flex-col border-r border-[#1a1a1a] bg-[#111]">
+                <ChatPanel onGenerate={generate} onEdit={editFile} terminalLogs={logs} />
+              </aside>
+
+              {/* Center: Code Editor (45%) */}
+              <div className="flex-1 flex flex-col bg-[#0d0d0d]">
+                <CodeEditor
+                  filePath={activeFile}
+                  content={activeContent}
+                  isLoading={isEditorLoading}
+                />
+              </div>
+
+              {/* Right: Live Preview (35%) */}
+              <aside className="w-[35%] min-w-[320px] max-w-[600px] border-l border-[#1a1a1a]">
+                <PreviewPanel url={previewUrl} status={status} />
+              </aside>
             </div>
-          )}
-        </aside>
 
-        {/* ── Center: Code editor + Terminal ───────────────────────────────── */}
-        <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-          {/* Code editor */}
-          <div className="flex-1 overflow-hidden">
-            <CodeEditor
-              filePath={activeFile}
-              content={activeContent}
-              isLoading={isEditorLoading}
+            {/* Mobile/Tablet: Single panel with bottom nav */}
+            <div className="lg:hidden flex flex-col h-full">
+              {/* Active panel */}
+              <div className="flex-1 overflow-hidden">
+                {activeCodePanel === 'chat' && (
+                  <ChatPanel onGenerate={generate} onEdit={editFile} terminalLogs={logs} />
+                )}
+                {activeCodePanel === 'editor' && (
+                  <CodeEditor
+                    filePath={activeFile}
+                    content={activeContent}
+                    isLoading={isEditorLoading}
+                  />
+                )}
+                {activeCodePanel === 'preview' && (
+                  <PreviewPanel url={previewUrl} status={status} />
+                )}
+              </div>
+
+              {/* Mobile bottom navigation */}
+              <nav className="h-14 border-t border-[#1a1a1a] bg-[#111] flex items-stretch">
+                {[
+                  { id: 'chat' as const, label: 'Chat', icon: MessageSquare },
+                  { id: 'editor' as const, label: 'Code', icon: FileCode2 },
+                  { id: 'preview' as const, label: 'Preview', icon: MonitorPlay },
+                ].map((panel) => {
+                  const Icon = panel.icon
+                  return (
+                    <button
+                      key={panel.id}
+                      onClick={() => setActiveCodePanel(panel.id)}
+                      className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors ${
+                        activeCodePanel === panel.id
+                          ? 'text-[#3b82f6] bg-[#1a1a1a]'
+                          : 'text-[#888] hover:text-[#f0f0f0] hover:bg-[#141414]'
+                      }`}
+                    >
+                      <Icon size={18} />
+                      <span className="text-[10px] font-medium">{panel.label}</span>
+                    </button>
+                  )
+                })}
+              </nav>
+            </div>
+          </div>
+        )}
+
+        {/* DATA MODE - Database schema viewer */}
+        {activeTab === 'data' && (
+          <div className="h-full">
+            <DatabaseViewer />
+          </div>
+        )}
+
+        {/* SETTINGS MODE - Project settings */}
+        {activeTab === 'settings' && (
+          <div className="h-full">
+            <SettingsPanel 
+              projectName={projectId ?? 'vian-project'}
+              onShare={handleShare}
+              onExport={handlePublish}
             />
           </div>
+        )}
 
-          {/* Terminal panel at bottom */}
-          <div className="h-44 flex-shrink-0 border-t border-[#1f1f1f]">
-            <TerminalPanel logs={logs} status={status} />
-          </div>
-        </main>
-
-        {/* ── Right: Preview ───────────────────────────────────────────────── */}
-        <aside className="w-[42%] flex-shrink-0 border-l border-[#1f1f1f] flex flex-col">
-          <PreviewPanel
-            url={previewUrl}
-            status={status}
-          />
-        </aside>
-      </div>
+      </main>
 
       {/* ── Status bar ─────────────────────────────────────────────────────── */}
       <StatusBar />
     </div>
   )
 }
-

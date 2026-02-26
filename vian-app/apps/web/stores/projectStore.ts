@@ -22,6 +22,7 @@ export interface ProjectStore {
   previewUrl: string | null
   model: ModelId
   errorMessage: string | null
+  generationStatus: string | null
 
   // Actions
   setProjectId: (id: string) => void
@@ -32,6 +33,7 @@ export interface ProjectStore {
   setPreviewUrl: (url: string | null) => void
   setModel: (model: ModelId) => void
   setErrorMessage: (msg: string | null) => void
+  setGenerationStatus: (msg: string | null) => void
   reset: () => void
 }
 
@@ -44,6 +46,7 @@ const INITIAL_STATE = {
   previewUrl: null,
   model: 'llama-3.3-70b-versatile' as ModelId,
   errorMessage: null,
+  generationStatus: null,
 }
 
 export const useProjectStore = create<ProjectStore>((set) => ({
@@ -81,6 +84,8 @@ export const useProjectStore = create<ProjectStore>((set) => ({
   setModel: (model) => set({ model }),
 
   setErrorMessage: (msg) => set({ errorMessage: msg }),
+
+  setGenerationStatus: (msg) => set({ generationStatus: msg }),
 
   reset: () => set(INITIAL_STATE),
 }))

@@ -37,8 +37,9 @@ const config: Config = {
         error:   '#ef4444',
       },
       fontFamily: {
-        ui:   ['Geist', '-apple-system', 'sans-serif'],
-        code: ['"Geist Mono"', '"Fira Code"', 'monospace'],
+        ui:   ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        code: ['"JetBrains Mono"', '"Fira Code"', 'monospace'],
+        mono: ['"JetBrains Mono"', '"Fira Code"', 'monospace'],
       },
       fontSize: {
         '2xs': ['11px', { lineHeight: '1.4' }],

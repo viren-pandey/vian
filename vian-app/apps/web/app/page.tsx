@@ -110,7 +110,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0d0d] text-[#f0f0f0] overflow-x-hidden" style={{ fontFamily: "'Geist', sans-serif" }}>
+    <div className="min-h-screen bg-[#0d0d0d] text-[#f0f0f0] overflow-x-hidden font-ui">
 
       {/* grid background */}
       <div className="fixed inset-0 pointer-events-none" style={{ backgroundImage: `linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px)`, backgroundSize: '48px 48px' }} />
@@ -375,7 +375,7 @@ export default function LandingPage() {
             <a href="#how-it-works" className="hover:text-[#888888] transition-colors">How it works</a>
             <a href="/request-access" className="hover:text-[#888888] transition-colors">Request Access</a>
           </div>
-          <span className="text-xs text-[#555555]">Made with VIAN by Viren Pandeyy</span>
+          <span className="text-xs text-[#555555]">Made with VIAN by Viren Pandey</span>
         </div>
       </footer>
 

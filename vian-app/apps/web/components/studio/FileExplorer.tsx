@@ -17,14 +17,14 @@ interface TreeNode {
 // ── File / folder icon helpers ─────────────────────────────────────────────
 function getFileIcon(name: string): { label: string; color: string } {
   const ext = name.toLowerCase()
-  if (ext.endsWith('.tsx') || ext.endsWith('.jsx')) return { label: 'R',  color: '#61dafb' }
-  if (ext.endsWith('.ts'))                           return { label: 'TS', color: '#3178c6' }
-  if (ext.endsWith('.js'))                           return { label: 'JS', color: '#f7df1e' }
-  if (ext.endsWith('.css'))                          return { label: '#',  color: '#42a5f5' }
+  if (ext.endsWith('.tsx') || ext.endsWith('.jsx')) return { label: 'R',  color: '#3b82f6' }
+  if (ext.endsWith('.ts'))                           return { label: 'TS', color: '#3b82f6' }
+  if (ext.endsWith('.js'))                           return { label: 'JS', color: '#f59e0b' }
+  if (ext.endsWith('.css'))                          return { label: '#',  color: '#a78bfa' }
   if (ext.endsWith('.html'))                         return { label: '<>', color: '#e44d26' }
   if (ext.endsWith('.svg'))                          return { label: '◈',  color: '#ff9800' }
   if (ext.endsWith('.md'))                           return { label: '↓',  color: '#78909c' }
-  if (ext.endsWith('.json'))                         return { label: '{}', color: '#ffa726' }
+  if (ext.endsWith('.json'))                         return { label: '{}', color: '#888' }
   if (ext.includes('.env'))                          return { label: '⚙',  color: '#ecc94b' }
   if (ext.endsWith('.png') || ext.endsWith('.jpg') ||
       ext.endsWith('.jpeg') || ext.endsWith('.webp')) return { label: '▣', color: '#26a69a' }
@@ -32,22 +32,8 @@ function getFileIcon(name: string): { label: string; color: string } {
 }
 
 function getFolderColor(name: string): string {
-  const n = name.toLowerCase()
-  if (n === 'app')                        return '#3b82f6'
-  if (n === 'components')                 return '#a78bfa'
-  if (n === 'lib')                        return '#34d399'
-  if (n === 'hooks')                      return '#fb923c'
-  if (n === 'api')                        return '#38bdf8'
-  if (n === 'actions')                    return '#f472b6'
-  if (n === 'styles')                     return '#60a5fa'
-  if (n === 'public')                     return '#4ade80'
-  if (n === 'types')                      return '#c084fc'
-  if (n === 'store' || n === 'stores')    return '#fbbf24'
-  if (n === 'utils')                      return '#34d399'
-  if (n === 'server')                     return '#f87171'
-  if (n === 'pages')                      return '#818cf8'
-  if (n === 'middleware')                 return '#f59e0b'
-  return '#6b7280'
+  // All folders use orange theme
+  return '#f97316'
 }
 
 function FolderIcon({ open, color }: { open: boolean; color: string }) {
@@ -62,10 +48,36 @@ function FolderIcon({ open, color }: { open: boolean; color: string }) {
 
 // ── Status indicator ───────────────────────────────────────────────────────
 function StatusDot({ status }: { status: FileStatus }) {
-  if (status === 'generating') return <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block animate-pulse-dot" />
-  if (status === 'complete')   return <span className="text-green-400 text-[10px] font-bold leading-none">✓</span>
-  if (status === 'error')      return <span className="text-red-400 text-[10px] font-bold leading-none">✗</span>
-  return <span className="w-1.5 h-1.5 rounded-full border border-[#444] inline-block" />
+  if (status === 'queued') 
+    return <span className="w-1.5 h-1.5 rounded-full border border-[#333] inline-block" />
+  
+  if (status === 'generating') 
+    return (
+      <span 
+        className="w-2 h-2 rounded-full bg-[#3b82f6] inline-block"
+        style={{ animation: 'antenna-pulse 1s ease-in-out infinite' }}
+      />
+    )
+  
+  if (status === 'complete')
+    return (
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <circle cx="6" cy="6" r="5" stroke="#22c55e" strokeWidth="1.5" />
+        <path d="M3.5 6l2 2 3-3" stroke="#22c55e" strokeWidth="1.5"
+              strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    )
+  
+  if (status === 'error')
+    return (
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <circle cx="6" cy="6" r="5" stroke="#ef4444" strokeWidth="1.5" />
+        <path d="M4 4l4 4M8 4l-4 4" stroke="#ef4444" strokeWidth="1.5"
+              strokeLinecap="round" />
+      </svg>
+    )
+  
+  return null
 }
 
 // ── Tree item ──────────────────────────────────────────────────────────────
@@ -84,8 +96,8 @@ function FileItem({ node, depth }: { node: TreeNode; depth: number }) {
         className={clsx(
           'group flex items-center gap-1.5 h-7 pr-2 cursor-pointer select-none rounded mx-1 transition-colors',
           isActive
-            ? 'bg-[#1d3557] text-white'
-            : 'text-[#c0c0c0] hover:bg-[#1f1f1f] hover:text-white'
+            ? 'bg-[rgba(180,80,20,0.15)] text-white border-l-[3px] border-[#f97316]'
+            : 'text-[#c0c0c0] hover:bg-[#1f1f1f] hover:text-white border-l-[3px] border-transparent'
         )}
       >
         {/* Chevron for folders */}
@@ -180,14 +192,26 @@ export default function FileExplorer() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto py-2">
-      <div className="px-4 mb-2 flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-widest text-[#444]">Explorer</span>
-        <span className="text-[10px] text-[#3b3b3b]">{Object.keys(files).length} files</span>
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="h-11 flex items-center justify-between px-4 border-b border-[#1a1a1a] flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#3b82f6]">
+            <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+            <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+            <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+            <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+          </svg>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#888]">EXPLORER</span>
+        </div>
       </div>
-      {tree.map((node) => (
-        <FileItem key={node.path} node={node} depth={0} />
-      ))}
+
+      {/* File tree */}
+      <div className="flex-1 overflow-y-auto py-2">
+        {tree.map((node) => (
+          <FileItem key={node.path} node={node} depth={0} />
+        ))}
+      </div>
     </div>
   )
 }

@@ -35,6 +35,7 @@ export default function BlogEditor({ content, onChange }: BlogEditorProps) {
       CodeBlockLowlight.configure({ lowlight }),
     ],
     content,
+    immediatelyRender: false,
     onUpdate: ({ editor }: { editor: Editor }) => onChange(editor.getHTML()),
     editorProps: {
       attributes: { class: 'tiptap focus:outline-none' },

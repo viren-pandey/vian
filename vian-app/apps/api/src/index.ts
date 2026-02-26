@@ -9,6 +9,8 @@ import { exportRouter } from './routes/export'
 import { adminRouter } from './routes/admin'
 import { authRouter } from './routes/auth'
 import blogRouter from './routes/blog'
+import mediaRouter from './routes/media'
+import { codegenRouter } from './routes/codegen'
 import { errorHandler } from './middleware/errorHandler'
 
 const app: Express = express()
@@ -29,6 +31,8 @@ app.use('/api/export', exportRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/blog', blogRouter)
+app.use('/api/media', mediaRouter)
+app.use('/api/codegen', codegenRouter) // Zero-cost AI code generator
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'vian-api', version: '1.0.0' }))

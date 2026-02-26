@@ -5,6 +5,8 @@ import { useRef, useCallback, useState } from 'react'
 import { Wand2 } from 'lucide-react'
 import type { OnMount } from '@monaco-editor/react'
 import { useProjectStore } from '@/stores/projectStore'
+import AnimatedCodeWriter from './AnimatedCodeWriter'
+import VianRobot from './VianRobot'
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -101,9 +103,12 @@ async function formatWithPrettier(code: string, lang: string): Promise<string> {
 }
 
 export default function CodeEditor({ filePath, content, isLoading }: CodeEditorProps) {
-  const { setFile } = useProjectStore()
+  const { setFile, files, isGenerating } = useProjectStore()
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
   const [formatting, setFormatting] = useState(false)
+
+  const activeFileData = filePath ? files[filePath] : null
+  const isActiveFileGenerating = isGenerating && activeFileData?.status === 'generating'
 
   const handleFormat = useCallback(async () => {
     const ed = editorRef.current
@@ -148,18 +153,24 @@ export default function CodeEditor({ filePath, content, isLoading }: CodeEditorP
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-base gap-4">
-        <div className="w-5 h-5 border border-accent border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs text-text-muted font-ui animate-pulse">Generating your application...</p>
+      <div className="flex flex-col items-center justify-center h-full bg-[#0d0d0d] gap-4">
+        <div className="w-8 h-8 border-2 border-[#3b82f6] border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-[#888] font-medium animate-pulse">Generating your application...</p>
       </div>
     )
   }
 
   if (!filePath) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-base gap-3">
-        <span className="text-4xl opacity-[0.06] text-text-primary">◆</span>
-        <p className="text-xs text-text-muted font-ui">Select a file or generate a project</p>
+      <div className="flex flex-col items-center justify-center h-full bg-[#0d0d0d] gap-4">
+        <div className="relative">
+          <span className="text-[80px] text-[#3b82f6] opacity-10">◆</span>
+          <div className="absolute inset-0 blur-2xl bg-[#3b82f6] opacity-5" />
+        </div>
+        <p className="text-sm text-[#888] font-medium">Select a file from the explorer</p>
+        <p className="text-xs text-[#555] max-w-xs text-center leading-relaxed">
+          Or start a new generation in the chat to create files
+        </p>
       </div>
     )
   }
@@ -167,13 +178,61 @@ export default function CodeEditor({ filePath, content, isLoading }: CodeEditorP
   const lang = langFromPath(filePath)
   const canFormat = ['typescript', 'javascript', 'json', 'css'].includes(lang)
 
+  // ── GENERATING: show animated writer ──
+  if (isGenerating) {
+    return (
+      <div className="h-full flex flex-col bg-[#0d0d0d] relative">
+        {/* File tab bar */}
+        <div className="flex items-center h-10 bg-[#111] border-b border-[#1a1a1a] flex-shrink-0 px-3 gap-3">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-[#888] text-xs font-mono uppercase">{lang}</span>
+            <span className="text-[#2a2a2a]">|</span>
+            <span className="text-[#f0f0f0] font-medium">{filePath?.split('/').pop()}</span>
+          </div>
+
+          {/* VIAN writing indicator */}
+          {isActiveFileGenerating && (
+            <div className="ml-auto flex items-center gap-1.5">
+              <span className="text-[10px] font-mono text-[#3b82f6]">VIAN writing</span>
+              <span className="flex gap-0.5">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="w-1 h-1 rounded-full bg-[#3b82f6]"
+                    style={{
+                      animation: `bounce 1s ease-in-out infinite`,
+                      animationDelay: `${i * 0.15}s`,
+                    }}
+                  />
+                ))}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Animated code writer */}
+        <div className="flex-1 overflow-hidden relative">
+          <AnimatedCodeWriter
+            code={content}
+            isWriting={isActiveFileGenerating}
+            language={lang}
+            filename={filePath ?? ''}
+          />
+          <VianRobot isWriting={isActiveFileGenerating} />
+        </div>
+      </div>
+    )
+  }
+
+  // ── DONE: show Monaco in read-only mode ──
   return (
-    <div className="h-full flex flex-col">
-      {/* Tab bar */}
-      <div className="flex items-center h-9 bg-surface border-b border-border-subtle flex-shrink-0 px-1">
-        <div className="flex items-center gap-2 h-full px-3 border-b border-accent text-xs text-text-primary font-code flex-1">
-          <span className="text-text-muted">{lang.toUpperCase()}</span>
-          <span>{filePath.split('/').pop()}</span>
+    <div className="h-full flex flex-col bg-[#0d0d0d]">
+      {/* File tab bar */}
+      <div className="flex items-center h-10 bg-[#111] border-b border-[#1a1a1a] flex-shrink-0 px-3 gap-3">
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-[#888] text-xs font-mono uppercase">{lang}</span>
+          <span className="text-[#2a2a2a]">|</span>
+          <span className="text-[#f0f0f0] font-medium">{filePath.split('/').pop()}</span>
         </div>
 
         {/* Prettier format button */}
@@ -182,16 +241,16 @@ export default function CodeEditor({ filePath, content, isLoading }: CodeEditorP
             onClick={handleFormat}
             disabled={formatting}
             title="Format with Prettier (Ctrl+S)"
-            className="flex items-center gap-1.5 px-2.5 h-6 mr-1 rounded text-2xs text-text-muted hover:text-text-secondary hover:bg-white/5 transition-colors disabled:opacity-40 font-ui"
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-[#888] hover:text-[#f0f0f0] hover:bg-[#1a1a1a] transition-colors disabled:opacity-40 border border-transparent hover:border-[#2a2a2a]"
           >
-            <Wand2 size={10} />
+            <Wand2 size={12} />
             {formatting ? 'Formatting…' : 'Format'}
           </button>
         )}
       </div>
 
       {/* Editor */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden p-4 bg-[#0d0d0d]">
         <MonacoEditor
           height="100%"
           language={lang}
@@ -209,20 +268,28 @@ export default function CodeEditor({ filePath, content, isLoading }: CodeEditorP
           }}
           theme="vs-dark"
           options={{
-            fontSize: 15,
-            fontFamily: '"Geist Mono", "Fira Code", monospace',
+            readOnly: true,               // ← non-editable
+            readOnlyMessage: {
+              value: 'Use the chat to modify files'
+            },
+            domReadOnly: true,            // ← prevents paste/type
+            fontSize: 13,
+            lineHeight: 20,
+            fontFamily: '"JetBrains Mono", "Fira Code", monospace',
             fontLigatures: true,
             minimap: { enabled: false },
             scrollBeyondLastLine: false,
             padding: { top: 16, bottom: 16 },
             lineNumbers: 'on',
-            renderLineHighlight: 'none',
+            renderLineHighlight: 'gutter',
             automaticLayout: true,
             tabSize: 2,
             wordWrap: 'on',
             bracketPairColorization: { enabled: true },
-            scrollbar: { verticalScrollbarSize: 4, horizontalScrollbarSize: 4 },
+            scrollbar: { verticalScrollbarSize: 6, horizontalScrollbarSize: 6 },
             formatOnPaste: true,
+            cursorBlinking: 'smooth',
+            smoothScrolling: true,
           }}
         />
       </div>
